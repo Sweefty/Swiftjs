@@ -1,4 +1,4 @@
-define(['jQuery'], function(require, exports, $){
+(function () {
     "use strict";
     
     var queryParser = /(?:^|&)([^&=]*)=?([^&]*)/g;
@@ -17,23 +17,109 @@ define(['jQuery'], function(require, exports, $){
     function readCookie(name) {
         var nameEQ = name + "=";
         var ca = document.cookie.split(';');
-        for(var i=0;i < ca.length;i++) {
+        for(var i=0;i < ca.length; i++) {
             var c = ca[i];
             while (c.charAt(0)==' ') { c = c.substring(1,c.length); }
             if (c.indexOf(nameEQ) == 0) { 
-                return c.substring(nameEQ.length,c.length); 
+                return c.substring(nameEQ.length,c.length);
             }
         }
         return null;
     }
 
-    
+    function debug (){
+        console.log(arguments);
+    }
+
+    function Render (swift, elem, name, data){
+        if (!$.isArray(data)){
+            data = [data];
+        }
+        var self = this;
+        self.swift = swift;
+        self._data = data;
+        self.elements = [];
+        var container = self.container = $(elem);
+        self.el = swift.elements[name];
+        container.html("");
+
+        if (self.el){
+            $(self._data).each(function(index, f){
+                var elementData = data[index];
+                self.insert(index, elementData);
+            });
+        } else {
+            debug("element " + name + " not found");
+        }
+    }
+
+    Render.prototype.update = function(data){
+
+    };
+
+    Render.prototype.insert = function(index, data){
+        var self = this;
+        var swift = self.swift;
+        var html = $("<div/>").append(self.el.html.clone());
+        swift._loadSWDataModel(html, data, index);
+        var renderedElement = html.children();
+        self.container.append(renderedElement);
+        self.elements.push({
+            element : renderedElement,
+            data    : data
+        });
+        html.remove();
+    };
+
+    Render.prototype.append = function(data){
+
+    };
+
+    Render.prototype.data = function(index){
+        var self = this;
+        var swift = this.swift;
+        var data;
+        
+        if (typeof index !== "undefined"){
+            data = this._data[index];
+        } else {
+            data = this._data;
+        }
+
+        var old  = JSON.stringify(data);
+        setTimeout(function(){
+            if (old !== JSON.stringify(data)){
+                if (typeof index !== "undefined"){
+                    var element = self.elements[index].element;
+                    swift._loadSWDataModel(element, data, index);
+                } else {
+                    $.each(data, function(i){
+                        var element = self.elements[i];
+                        var elementData = data[i];
+                        if (!element){
+                            //new element added
+                            self.insert(i, elementData);
+                        } else {
+                            if (element.data === elementData){
+                                console.log("ok");
+                            } else {
+                                console.log(elementData);
+                            }
+                        }
+                    });
+                }
+            }
+        }, 60);
+        return data;
+    };
+
     function swift (){
         var self = this;
         self.routes = {};
         self.params = {};
         self.elements = {};
         self.templates = {};
+        self.models = {};
         self._cache = {};
         self._stash = {};
         self._before_route = [];
@@ -59,6 +145,25 @@ define(['jQuery'], function(require, exports, $){
             }, 100);
         }
     }
+
+    swift.prototype._loadSWDataModel = function(ele, data, index){
+        var swift = this;
+        ele.find('[data-sw-model]').each( function(){
+            var item = $(this);
+            item.off();
+            var models = item.attr('data-sw-model').split(':');
+            for (var i = 0; i < models.length; i++){
+                var model = swift.models[models[i]];
+                if (model && typeof model === "function"){
+                    model.apply(this, [data || {}, index || 0]);
+                }
+            }
+        });
+    };
+
+    swift.prototype.model = function (name, obj){
+        this.models[name] = obj;
+    };
 
     swift.prototype._fireRouter = function (name, fn){
         var self = this;
@@ -127,31 +232,8 @@ define(['jQuery'], function(require, exports, $){
         return this.params[name];
     };
 
-    swift.prototype.render = function (elem, name, cb) {
-        var self = this;
-        var container = $(elem);
-        var el   = self.elements[name];
-        var html = el.html.clone();
-        if (el){
-            container.html(html);
-            container.find('[data-swRender]').each( function(){
-                var item = $(this);
-                var renderElement = item.attr('data-swRender');
-                //prevent nested rendering
-                if (renderElement === name){
-                    throw new Error('nested rendering not allowed');
-                }
-                self.render(item, renderElement, cb);
-            });
-
-            if (!cb){
-                cb = el.cb;
-            }
-
-            if (cb && typeof cb === 'function'){
-                cb.apply(self,[html,container]);
-            }
-        }
+    swift.prototype.render = function (elem, name, data) {
+        return new Render(this, elem, name, data);
     };
 
     swift.prototype.before_view = function (name, cb){
@@ -206,8 +288,7 @@ define(['jQuery'], function(require, exports, $){
                     _fireAfterLoad(el);
                 },
                 error : function(jqXHR, textStatus, error){
-                    alert('error ' + error);
-                    console.log(error);
+                    debug(error);
                 },
                 cache: false
             });
@@ -241,17 +322,21 @@ define(['jQuery'], function(require, exports, $){
                 el.html(data);
                 el.find('[data-swElement]').each(function(i, v){
                     var item = $(this);
+                    var cb = _nob
+                    var script = $(this).find('script');
+                    if ($(script).length){
+                        
+                    }
                     var name = item.attr('data-swElement');
-                    var cb = self.elements[name] ? self.elements[name].cb : _nob;
-                    self.element(name,item,cb);
+                    self.element(name, item, cb);
                 });
                 el.remove();
             },
             error : function(jqXHR, textStatus, error){
-                alert('error ' + error);
-                console.log(error);
+                debug(error);
             },
-            cache: false
+            cache: false,
+            async : false
         });
     };
 
@@ -288,7 +373,14 @@ define(['jQuery'], function(require, exports, $){
 
     swift.prototype.run = function () {
         this._fireRouter();
+        this._loadSWDataModel( $('body') );
     };
 
-    this.exports = new swift();
-});
+    if (typeof require === 'function'){
+        define(['jQuery'], function(require, exports, $){
+            this.exports = new swift();
+        });
+    } else {
+        window.swift = new swift();
+    }
+}());
