@@ -4,6 +4,10 @@
     var queryParser = /(?:^|&)([^&=]*)=?([^&]*)/g;
     function _nob (){}
 
+    $.fn.find_with_root = function(selector) {
+        return this.filter(selector).add(this.find(selector));
+    };
+
     //based on http://www.quirksmode.org/js/cookies.html 
     function createCookie(name,value,days) {
         if (days) {
@@ -31,86 +35,13 @@
         console.log(arguments);
     }
 
-    function Render (swift, elem, name, data){
-        if (!$.isArray(data)){
-            data = [data];
-        }
-        var self = this;
-        self.swift = swift;
-        self._data = data;
-        self.elements = [];
-        var container = self.container = $(elem);
-        self.el = swift.elements[name];
-        container.html("");
+    function Computed (){
 
-        if (self.el){
-            $(self._data).each(function(index, f){
-                var elementData = data[index];
-                self.insert(index, elementData);
-            });
-        } else {
-            debug("element " + name + " not found");
-        }
     }
 
-    Render.prototype.update = function(data){
-
-    };
-
-    Render.prototype.insert = function(index, data){
-        var self = this;
-        var swift = self.swift;
-        var html = $("<div/>").append(self.el.html.clone());
-        swift._loadSWDataModel(html, data, index);
-        var renderedElement = html.children();
-        self.container.append(renderedElement);
-        self.elements.push({
-            element : renderedElement,
-            data    : data
-        });
-        html.remove();
-    };
-
-    Render.prototype.append = function(data){
-
-    };
-
-    Render.prototype.data = function(index){
-        var self = this;
-        var swift = this.swift;
-        var data;
-        
-        if (typeof index !== "undefined"){
-            data = this._data[index];
-        } else {
-            data = this._data;
-        }
-
-        var old  = JSON.stringify(data);
-        setTimeout(function(){
-            if (old !== JSON.stringify(data)){
-                if (typeof index !== "undefined"){
-                    var element = self.elements[index].element;
-                    swift._loadSWDataModel(element, data, index);
-                } else {
-                    $.each(data, function(i){
-                        var element = self.elements[i];
-                        var elementData = data[i];
-                        if (!element){
-                            //new element added
-                            self.insert(i, elementData);
-                        } else {
-                            if (element.data === elementData){
-                                console.log("ok");
-                            } else {
-                                console.log(elementData);
-                            }
-                        }
-                    });
-                }
-            }
-        }, 60);
-        return data;
+    var cache = {
+        data : {},
+        templates : {}
     };
 
     function swift (){
@@ -118,9 +49,7 @@
         self.routes = {};
         self.params = {};
         self.elements = {};
-        self.templates = {};
         self.models = {};
-        self._cache = {};
         self._stash = {};
         self._before_route = [];
         self._before_view  = [];
@@ -146,21 +75,299 @@
         }
     }
 
-    swift.prototype._loadSWDataModel = function(ele, data, index){
-        var swift = this;
-        ele.find('[data-sw-model]').each( function(){
-            var item = $(this);
-            item.off();
-            var models = item.attr('data-sw-model').split(':');
-            for (var i = 0; i < models.length; i++){
-                var model = swift.models[models[i]];
-                if (model && typeof model === "function"){
-                    model.apply(this, [data || {}, index || 0]);
+    /*=========================================================================
+    * Render
+    ==========================================================================*/
+    function isObserved (data){
+        return (typeof data === "function" && 
+                 data.sw_observe === true);
+    }
+
+    function isDefined (val){
+        return typeof val !== "undefined";
+    }
+    
+    swift.prototype.observe = function(data){
+        var _data = data;
+        var elements = [];
+
+        var type = (typeof data === "object") ?
+                    ($.isArray(data)) ? "array" : "Object" :
+                    "string";
+
+        var observe = function(key, val){
+            //set strings & numbers
+            if (type === "string" && isDefined(key)) {
+                _data = key;
+                $(elements).each(function(a, obj){
+                    $(obj.elements).each(function(b, element){
+                        $(obj.actions).each(function(c, action){
+                            action(element, _data);
+                        });
+                    });
+                });
+                return;
+            }
+
+            if (!isDefined(val)){ return _data; }
+            
+            //set Array & objects
+            if (isDefined(val)){
+                observe.set(key, val);
+            }
+
+            //get array & objects
+            else { return _data[key]; }
+        };
+
+        observe.set = function(i, d){
+            _data[i] = d;
+            $(elements).each(function(a, obj){
+                var element = obj.elements[i];
+                $(obj.actions).each(function(x, action){
+                    action(element, _data[i]);
+                });
+            });
+        };
+
+        observe.refresh = function(){
+            $(elements).each(function(a, obj){
+                $(obj.elements).each(function(b, element){
+                    $(obj.actions).each(function(c, action){
+                        action(element, _data[b], b);
+                    });
+                });
+            });
+        };
+
+        observe.push = function(data){
+            _data.push(data);
+            $(elements).each(function(a, obj){
+                var node = $(obj.html);
+                $(obj.actions).each(function(i, action){
+                    action(node, data);
+                });
+                obj.doc.append(node);
+                obj.elements.push(node);
+            });
+        };
+
+        observe.unshift = function(data){
+            _data.unshift(data);
+            $(elements).each(function(a, obj){
+                var node = $(obj.html);
+                $(obj.actions).each(function(i, action){
+                    action(node, data);
+                });
+                obj.doc.prepend(node);
+                obj.elements.unshift(node);
+            });
+        };
+
+        observe.pop = function(){
+            var last = _data.length - 1;
+            _data.pop();
+            $(elements).each(function(a, obj){
+                var lastEle = obj.elements[last];
+                obj.elements.pop();
+                lastEle.remove();
+            });
+        };
+
+        observe.shift = function(){
+            _data.shift();
+            $(elements).each(function(a, obj){
+                var lastEle = obj.elements[0];
+                obj.elements.shift();
+                lastEle.remove();
+            });
+        };
+
+        observe.register = function(ele){
+            elements.push(ele);
+        };
+
+        observe.type = type;
+        observe.sw_observe = true;
+        observe.data = _data;
+        return observe;
+    };
+
+    var _actionsMap = {
+        'value' : function(selector, prop){
+            var t = function(root, data){
+                var e = root.find_with_root('.' + selector);
+                var text = "";
+                if (isObserved(prop)) {
+                    if (!e.hasClass('sw_init')){
+                        var obs = { actions : [t], elements : [e] };
+                        prop.register(obs);
+                    }
+                    e.addClass('sw_init');
+                    text = prop();
+                } else if (typeof prop === "function"){
+                    text = prop(e);
+                } else {
+                    text = data[prop];
                 }
+                e.val(text);
+            };
+            return t;
+        },
+        'text' : function(selector, prop){
+            var t = function(root, data, index){
+                var e = root.find_with_root('.' + selector);
+                var text = "";
+                if (isObserved(prop)) {
+                    if (!e.hasClass('sw_init')){
+                        var obs = { actions : [t], elements : [e] };
+                        prop.register(obs);
+                    }
+                    e.addClass('sw_init');
+                    text = prop();
+                } else if (typeof prop === "function"){
+                    text = prop(e);
+                } else {
+                    text = data[prop];
+                }
+                e.text(text);
+            };
+            return t;
+        },
+        'test' : function(selector, prop){
+            var t = function(root, data, index){
+                var e = root.find_with_root('.' + selector);
+                var text = "";
+                if (isObserved(prop)){
+                    if (!e.hasClass('sw_init')){
+                        var obs = { actions : [t], elements : [e] };
+                        prop.register(obs);
+                    }
+                    e.addClass('sw_init');
+                    text = prop();
+                } else if (typeof prop === "function"){
+                    text = prop(e);
+                } else {
+                    text = data[prop];
+                }
+                e.text(text);
+            };
+            return t;
+        },
+        'click' : function(selector, prop, on){
+            return function(root, data, index){
+                var $this = root.find_with_root('.' + selector);
+                $this.off("click");
+                $this.click(function(){
+                    if (typeof prop === "function") {
+                        prop($this, data);
+                    }
+                });
+            };
+        },
+        'custom' : function(selector, prop, on){
+            return function(root, data, index){
+                var $this = root.find_with_root('.' + selector);            
+                if (typeof prop === "function") {
+                    prop($this, data);
+                }
+            };
+        }
+    };
+
+    swift.prototype.doRender = function(items, parent){
+        var self = this;
+        $(items).each(function(i, item){
+            if (typeof item === "object" && item.isForeach ){
+                var doc = item.doc;
+                var html = item.clone.html();
+                var _isObserved = isObserved(item.data);
+                var foreach = _isObserved ? item.data.data : item.data;
+                var obs = { actions : item.actions, elements : [], 
+                            doc : doc, html : html };
+
+                $(foreach).each(function(i, data){
+                    var node = $(html);
+                    $(item.actions).each(function(i, action){
+                        action(node, data);
+                    });
+                    doc.append(node);
+                    obs.elements.push(node);
+                });
+                if ( _isObserved ){ item.data.register(obs); }
+            } else {
+                item.action(item.element, parent);
+                // console.log(item);
             }
         });
     };
 
+    var _model    = [];
+    var ele_count = 0;
+    swift.prototype.render = function(obj, doc, p, m, isForeach){
+        var self = this;
+        var tree = doc ? $(doc) : $(document);
+        var parent = p || obj;
+        var pushTo = m || _model;
+
+        //parse data-sw-foreach
+        tree.find('[data-sw-foreach]').each( function(){
+            var item = $(this);
+            var data = item.attr('data-sw-foreach');
+            var _isObserved = isObserved(obj[data]);
+            var foreach = {
+                isForeach : true,
+                doc       : item,
+                clone     : item.clone(true),
+                data      : obj[data],
+                actions   : [],
+            };
+
+            pushTo.push(foreach);
+            item.html("");
+            self.render(foreach.data, foreach.clone, obj, foreach.actions, true);
+        });
+
+        tree.find('[data-sw-bind]').each( function(i){
+            var _class = "_sw_el_" + ele_count++;
+            var item = $(this);
+            item.addClass(_class);
+
+            var models = item.attr('data-sw-bind').split(',');
+            $(models).each(function(i, model){
+                var action, prop;
+                var actions = model.split(':');
+                action = $.trim(actions[0]);
+                if (actions[1]) { 
+                    prop = $.trim(actions[1]); 
+                } else {
+                    prop = action;
+                    action = 'custom';
+                }
+                
+                var rootAction;
+                var root = prop.split('.');
+                if (root[0] === 'root'){
+                    rootAction = parent[root[1]];
+                }
+
+                if (isForeach){
+                    var fn = _actionsMap[action](_class, rootAction ? rootAction : prop);
+                    pushTo.push(fn);
+                } else {
+                    var fn = _actionsMap[action](_class, parent[prop]);
+                    pushTo.push({
+                        element : item,
+                        action  : fn 
+                    });
+                }
+            });
+        });
+
+        if (!isForeach){ self.doRender(pushTo, parent); }
+        return this;
+    };
+    //=========================================================================
     swift.prototype.model = function (name, obj){
         this.models[name] = obj;
     };
@@ -186,7 +393,7 @@
         
         //fire before routes actions
         //if one of the before_route function returns false
-        //routing will stop and will not dispatch
+        //routing will stop and will not continue dispatching
         if (self._before_route.length){
             var ret = true;
             $(self._before_route).each(function(i,f){
@@ -224,16 +431,8 @@
         this.routes["#" + name] = fn;
     };
 
-    swift.prototype.controller = function () {
-        
-    };
-
     swift.prototype.param = function (name) {
         return this.params[name];
-    };
-
-    swift.prototype.render = function (elem, name, data) {
-        return new Render(this, elem, name, data);
     };
 
     swift.prototype.before_view = function (name, cb){
@@ -252,7 +451,7 @@
         var el = $(elem);
         el.hide();
         var _fireAfterLoad = function(el){
-            var html = self.templates[url];
+            var html = cache.templates[url];
 
             //run before views actions
             if (self._before_view.length){
@@ -278,13 +477,13 @@
             el.fadeIn(500);
         };
 
-        if (self.templates[url]){
+        if (cache.templates[url]){
             _fireAfterLoad(el);
         } else {
             $.ajax({
                 url: self.templatesPath + url,
                 success: function(data){
-                    self.templates[url] = data;
+                    cache.templates[url] = data;
                     _fireAfterLoad(el);
                 },
                 error : function(jqXHR, textStatus, error){
@@ -364,16 +563,15 @@
     
     swift.prototype.cache = function (name,val) {
         if (val){
-            this._cache[name] = val;
+            cache.data[name] = val;
         } else {
-            val = this._cache[name];
+            val = cache.data[name];
         }
         return val || {};
     };
 
     swift.prototype.run = function () {
         this._fireRouter();
-        this._loadSWDataModel( $('body') );
     };
 
     if (typeof require === 'function'){
