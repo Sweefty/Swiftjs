@@ -35,14 +35,7 @@
         console.log(arguments);
     }
 
-    function Computed (){
-
-    }
-
-    var cache = {
-        data : {},
-        templates : {}
-    };
+    var cache = { data : {}, templates : {} };
 
     function swift (){
         var self = this;
@@ -86,10 +79,40 @@
     function isDefined (val){
         return typeof val !== "undefined";
     }
-    
-    swift.prototype.observe = function(data){
+
+    function callAction (action, node, data, val){
+        action.call({
+            el : node,
+            data : data,
+            val : val
+        }, node, data, val);
+    }
+
+    swift.prototype.compute = function(cb, obsevedValues){
+        var computed = function (){
+            return cb.apply(this, arguments);
+        };
+
+        computed.sw_observe  = true;
+        computed.sw_computed = true;
+        computed.register = function(ele){
+            $(obsevedValues).each(function(i, v){
+                v.register(ele);
+            });
+        };
+
+        computed.update = function(ele){
+            $(obsevedValues).each(function(i, v){
+                v.update();
+            });
+        };
+        return computed;
+    };
+
+    swift.prototype.observe = function(data, cb){
         var _data = data;
-        var elements = [];
+        var _cb   = cb;
+        var observed = [];
 
         var type = (typeof data === "object") ?
                     ($.isArray(data)) ? "array" : "Object" :
@@ -99,42 +122,48 @@
             //set strings & numbers
             if (type === "string" && isDefined(key)) {
                 _data = key;
-                $(elements).each(function(a, obj){
+                $(observed).each(function(a, obj){
                     $(obj.elements).each(function(b, element){
                         $(obj.actions).each(function(c, action){
-                            action(element, _data);
+                            callAction(action, element, _data);
                         });
                     });
                 });
                 return;
             }
 
-            if (!isDefined(val)){ return _data; }
-            
-            //set Array & objects
-            if (isDefined(val)){
-                observe.set(key, val);
+            if (isDefined(key)){
+                if (!isDefined(val)){
+                    var obj = _data[key];
+                    var old = JSON.stringify(obj);
+                    setTimeout(function(){
+                        if (old !== JSON.stringify(_data[key])){
+                            observe.set(key, _data[key]);
+                        }
+                    }, 10);
+                    return obj;
+                } else {
+                    observe.set(key, val);
+                }
             }
-
-            //get array & objects
-            else { return _data[key]; }
+            return _data;
         };
-
-        observe.set = function(i, d){
-            _data[i] = d;
-            $(elements).each(function(a, obj){
-                var element = obj.elements[i];
+        
+        observe.set = function(key, val){
+            _data[key] = val;
+            $(observed).each(function(a, obj){
+                var element = obj.elements[key];
                 $(obj.actions).each(function(x, action){
-                    action(element, _data[i]);
+                    callAction(action, element, _data[key]);
                 });
             });
         };
 
-        observe.refresh = function(){
-            $(elements).each(function(a, obj){
+        observe.update = function(){
+            $(observed).each(function(a, obj){
                 $(obj.elements).each(function(b, element){
                     $(obj.actions).each(function(c, action){
-                        action(element, _data[b], b);
+                        callAction(action, element, _data[b]);
                     });
                 });
             });
@@ -142,10 +171,10 @@
 
         observe.push = function(data){
             _data.push(data);
-            $(elements).each(function(a, obj){
+            $(observed).each(function(a, obj){
                 var node = $(obj.html);
                 $(obj.actions).each(function(i, action){
-                    action(node, data);
+                    callAction(action, node, data);
                 });
                 obj.doc.append(node);
                 obj.elements.push(node);
@@ -154,10 +183,10 @@
 
         observe.unshift = function(data){
             _data.unshift(data);
-            $(elements).each(function(a, obj){
+            $(observed).each(function(a, obj){
                 var node = $(obj.html);
                 $(obj.actions).each(function(i, action){
-                    action(node, data);
+                    callAction(action, node, data);
                 });
                 obj.doc.prepend(node);
                 obj.elements.unshift(node);
@@ -167,24 +196,50 @@
         observe.pop = function(){
             var last = _data.length - 1;
             _data.pop();
-            $(elements).each(function(a, obj){
-                var lastEle = obj.elements[last];
+            $(observed).each(function(a, obj){
+                var lastEl = obj.elements[last];
                 obj.elements.pop();
-                lastEle.remove();
+                lastEl.remove();
+            });
+        };
+
+        observe.each = function(cb){
+            $(_data).each(function(i, item){
+                cb(i, item);
+            });
+        };
+        
+        observe.remove = function(item){
+            var index = _data.indexOf(item);
+            observe.splice(index,1);
+        };
+
+        observe.splice = function(start, end){
+            var last = _data.length - 1;
+            _data.splice(start, end);
+            $(observed).each(function(a, obj){
+                for (var i = start; i < start+end; i++){
+                    var el = obj.elements[i];
+                    el.remove();
+                }
+                obj.elements.splice(start, end);
             });
         };
 
         observe.shift = function(){
             _data.shift();
-            $(elements).each(function(a, obj){
-                var lastEle = obj.elements[0];
+            $(observed).each(function(a, obj){
+                var firstEl = obj.elements[0];
                 obj.elements.shift();
-                lastEle.remove();
+                firstEl.remove();
             });
         };
 
-        observe.register = function(ele){
-            elements.push(ele);
+        observe.indexOf = function(data){ return _data.indexOf(data) };
+
+        observe.register = function(ele){ observed.push(ele); };
+        observe.limit = function(ms){
+            return observe;
         };
 
         observe.type = type;
@@ -193,94 +248,90 @@
         return observe;
     };
 
-    var _actionsMap = {
-        'value' : function(selector, prop){
-            var t = function(root, data){
-                var e = root.find_with_root('.' + selector);
-                var text = "";
-                if (isObserved(prop)) {
-                    if (!e.hasClass('sw_init')){
-                        var obs = { actions : [t], elements : [e] };
-                        prop.register(obs);
-                    }
-                    e.addClass('sw_init');
-                    text = prop();
-                } else if (typeof prop === "function"){
-                    text = prop(e);
-                } else {
-                    text = data[prop];
-                }
-                e.val(text);
-            };
-            return t;
-        },
-        'text' : function(selector, prop){
-            var t = function(root, data, index){
-                var e = root.find_with_root('.' + selector);
-                var text = "";
-                if (isObserved(prop)) {
-                    if (!e.hasClass('sw_init')){
-                        var obs = { actions : [t], elements : [e] };
-                        prop.register(obs);
-                    }
-                    e.addClass('sw_init');
-                    text = prop();
-                } else if (typeof prop === "function"){
-                    text = prop(e);
-                } else {
-                    text = data[prop];
-                }
-                e.text(text);
-            };
-            return t;
-        },
-        'test' : function(selector, prop){
-            var t = function(root, data, index){
-                var e = root.find_with_root('.' + selector);
-                var text = "";
-                if (isObserved(prop)){
-                    if (!e.hasClass('sw_init')){
-                        var obs = { actions : [t], elements : [e] };
-                        prop.register(obs);
-                    }
-                    e.addClass('sw_init');
-                    text = prop();
-                } else if (typeof prop === "function"){
-                    text = prop(e);
-                } else {
-                    text = data[prop];
-                }
-                e.text(text);
-            };
-            return t;
-        },
-        'click' : function(selector, prop, on){
-            return function(root, data, index){
+
+    function dispatchActions (selector, prop, type){
+        //click + any other custom action
+        var custom_actions = {
+            'click' : function(root, data){
                 var $this = root.find_with_root('.' + selector);
                 $this.off("click");
                 $this.click(function(){
                     if (typeof prop === "function") {
-                        prop($this, data);
+                        callAction(prop, $this, data);
                     }
                 });
-            };
-        },
-        'custom' : function(selector, prop, on){
-            return function(root, data, index){
-                var $this = root.find_with_root('.' + selector);            
+            },
+            'oncheck' : function (root, data){
+                var $this = root.find_with_root('.' + selector);
+                $this.off("change");
+                $this.change(function(){
+                    var dir = $this.prop("checked");
+                    if (isObserved(prop)){
+
+                    } else if (typeof prop === "function") {
+                        callAction(prop, $this, data, dir);
+                    }
+                });
+            },
+            'custom' : function(root, data){
+                var $this = root.find_with_root('.' + selector);
                 if (typeof prop === "function") {
-                    prop($this, data);
+                    callAction(prop, $this, data);
                 }
-            };
+            }
+        };
+        
+        if (custom_actions[type]){
+            return custom_actions[type];
         }
-    };
+
+        //everything else
+        var value_actions = {
+            value : function(e, ret){ e.val(ret); },
+            text  : function(e, ret){ e.text(ret); },
+            check : function(e, ret){ e.prop( "checked", ret ? true : false ); },
+            class : function(e, ret){
+                var _class = "";
+                if (typeof ret === "string") {
+                    if (ret === ""){
+                        _class = e.data("sw-class");
+                    } else {
+                        e.data("sw-class", ret);
+                        _class = ret;
+                    }
+                } else {
+                    _class = prop;
+                }
+                e[ret ? "addClass" : "removeClass"](_class);
+            }
+        };
+
+        var a = function(root, data, cb){
+            var ret;
+            var e = root.find_with_root('.' + selector);
+            if (isObserved(prop)) {
+                if (!e.hasClass('sw_init')){
+                    var obs = { actions : [a], elements : [e] };
+                    prop.register(obs);
+                }
+                e.addClass('sw_init');
+                ret = prop();
+            } else if (typeof prop === "function"){
+                ret = prop(e);
+            } else {
+                ret = data[prop];
+            }
+            value_actions[type](e, ret);
+        };
+        return a;
+    }
 
     swift.prototype.doRender = function(items, parent){
         var self = this;
         $(items).each(function(i, item){
             if (typeof item === "object" && item.isForeach ){
                 var doc = item.doc;
-                var html = item.clone.html();
+                var html = "<input type='hidden' class='sw-index'>" + item.clone.html();
                 var _isObserved = isObserved(item.data);
                 var foreach = _isObserved ? item.data.data : item.data;
                 var obs = { actions : item.actions, elements : [], 
@@ -288,16 +339,15 @@
 
                 $(foreach).each(function(i, data){
                     var node = $(html);
-                    $(item.actions).each(function(i, action){
-                        action(node, data);
+                    $(item.actions).each(function(x, action){
+                        callAction(action, node, data);
                     });
                     doc.append(node);
                     obs.elements.push(node);
                 });
                 if ( _isObserved ){ item.data.register(obs); }
             } else {
-                item.action(item.element, parent);
-                // console.log(item);
+                callAction(item.action, item.element, parent);
             }
         });
     };
@@ -337,6 +387,7 @@
             $(models).each(function(i, model){
                 var action, prop;
                 var actions = model.split(':');
+                console.log(actions);
                 action = $.trim(actions[0]);
                 if (actions[1]) { 
                     prop = $.trim(actions[1]); 
@@ -351,16 +402,18 @@
                     rootAction = parent[root[1]];
                 }
 
-                if (isForeach){
-                    var fn = _actionsMap[action](_class, rootAction ? rootAction : prop);
-                    pushTo.push(fn);
-                } else {
-                    var fn = _actionsMap[action](_class, parent[prop]);
-                    pushTo.push({
-                        element : item,
-                        action  : fn 
-                    });
-                }
+                try {
+                    if (isForeach){
+                        pushTo.push(dispatchActions(_class, rootAction ? 
+                                                rootAction : prop, action));
+
+                    } else {
+                        pushTo.push({
+                            element : item,
+                            action  : dispatchActions(_class, parent[prop], action)
+                        });
+                    }
+                } catch(e){ console.log(e) };
             });
         });
 
@@ -411,6 +464,7 @@
             fn.apply(self,[self]);
         } else if (typeof fn === 'string' && require && 
                     typeof require === 'function'){
+
             require(self.controllersPath + fn, function(ret){
                 if (typeof ret === 'function'){
                     ret.apply(self,[self]);
@@ -465,12 +519,6 @@
             }
 
             el.html(html);
-            el.find('[data-swRender]').each( function(){
-                var item = $(this);
-                var renderElement = item.attr('data-swRender');
-                self.render(item, renderElement);
-            });
-
             if (cb && typeof cb === 'function'){
                 cb.apply(self, [el]);
             }
@@ -509,34 +557,6 @@
             cb : callback
         };
         return this.elements[name];
-    };
-
-    swift.prototype.loadElements = function (url) {
-        var self = this;
-        $.ajax({
-            url: url,
-            success: function(data){
-                var el = $('<div style="display:none" />');
-                el.appendTo('body');
-                el.html(data);
-                el.find('[data-swElement]').each(function(i, v){
-                    var item = $(this);
-                    var cb = _nob
-                    var script = $(this).find('script');
-                    if ($(script).length){
-                        
-                    }
-                    var name = item.attr('data-swElement');
-                    self.element(name, item, cb);
-                });
-                el.remove();
-            },
-            error : function(jqXHR, textStatus, error){
-                debug(error);
-            },
-            cache: false,
-            async : false
-        });
     };
 
     swift.prototype.cookie = function (name,value,days) {
@@ -579,6 +599,6 @@
             this.exports = new swift();
         });
     } else {
-        window.swift = new swift();
+        window.sw = window.swift = new swift();
     }
 }());
