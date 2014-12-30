@@ -85,7 +85,7 @@
             el : node,
             data : data,
             val : val
-        }, node, data, val);
+        }, data);
     }
 
     swift.prototype.compute = function(cb, obsevedValues){
@@ -95,7 +95,9 @@
 
         computed.sw_observe  = true;
         computed.sw_computed = true;
+
         computed.register = function(ele){
+            console.log(cb);
             $(obsevedValues).each(function(i, v){
                 v.register(ele);
             });
@@ -118,15 +120,19 @@
                     ($.isArray(data)) ? "array" : "Object" :
                     "string";
 
+        var callEachAction = function(actions, element, data){
+            $(actions).each(function(i, action){
+                callAction(action, element, data);
+            });
+        };
+
         var observe = function(key, val){
             //set strings & numbers
             if (type === "string" && isDefined(key)) {
                 _data = key;
                 $(observed).each(function(a, obj){
                     $(obj.elements).each(function(b, element){
-                        $(obj.actions).each(function(c, action){
-                            callAction(action, element, _data);
-                        });
+                        callEachAction(obj.actions, element, _data);
                     });
                 });
                 return;
@@ -134,13 +140,16 @@
 
             if (isDefined(key)){
                 if (!isDefined(val)){
+                    if (type === 'array' && typeof key !== 'number'){
+                        key = _data.indexOf(key);
+                    }
                     var obj = _data[key];
                     var old = JSON.stringify(obj);
                     setTimeout(function(){
                         if (old !== JSON.stringify(_data[key])){
                             observe.set(key, _data[key]);
                         }
-                    }, 10);
+                    }, 0);
                     return obj;
                 } else {
                     observe.set(key, val);
@@ -148,24 +157,26 @@
             }
             return _data;
         };
-        
+
         observe.set = function(key, val){
             _data[key] = val;
             $(observed).each(function(a, obj){
                 var element = obj.elements[key];
-                $(obj.actions).each(function(x, action){
-                    callAction(action, element, _data[key]);
-                });
+                callEachAction(obj.actions, element, _data[key]);
             });
         };
 
         observe.update = function(){
             $(observed).each(function(a, obj){
-                $(obj.elements).each(function(b, element){
-                    $(obj.actions).each(function(c, action){
-                        callAction(action, element, _data[b]);
-                    });
+                $(obj.elements).each(function(key, element){
+                    callEachAction(obj.actions, element, _data[key]);
                 });
+            });
+        };
+
+        observe.each = function(cb){
+            $(_data).each(function(i, item){
+                cb(i, item);
             });
         };
 
@@ -173,9 +184,7 @@
             _data.push(data);
             $(observed).each(function(a, obj){
                 var node = $(obj.html);
-                $(obj.actions).each(function(i, action){
-                    callAction(action, node, data);
-                });
+                callEachAction(obj.actions, node, data);
                 obj.doc.append(node);
                 obj.elements.push(node);
             });
@@ -185,9 +194,7 @@
             _data.unshift(data);
             $(observed).each(function(a, obj){
                 var node = $(obj.html);
-                $(obj.actions).each(function(i, action){
-                    callAction(action, node, data);
-                });
+                callEachAction(obj.actions, node, data);
                 obj.doc.prepend(node);
                 obj.elements.unshift(node);
             });
@@ -200,12 +207,6 @@
                 var lastEl = obj.elements[last];
                 obj.elements.pop();
                 lastEl.remove();
-            });
-        };
-
-        observe.each = function(cb){
-            $(_data).each(function(i, item){
-                cb(i, item);
             });
         };
         
@@ -248,41 +249,57 @@
         return observe;
     };
 
+    var eventHandler = function(event){
+        var $this = $(this);
+        var prop = event.data.prop;
+        var data = event.data.data;
+        var type = event.data.type;
 
-    function dispatchActions (selector, prop, type){
-        //click + any other custom action
-        var custom_actions = {
-            'click' : function(root, data){
-                var $this = root.find_with_root('.' + selector);
-                $this.off("click");
-                $this.click(function(){
-                    if (typeof prop === "function") {
+        if (type === "oncheck"){
+            var dir = $this.prop("checked");
+            if (isObserved(prop)){
+
+            } else if (typeof prop === "function") {
+                callAction(prop, $this, data, dir);
+            }
+        } else if (typeof prop === "function") {
+            callAction(prop, $this, data);
+        }
+    };
+
+    var _map = {
+        oncheck : "change", 
+        click : "click", 
+        dblclick : "dblclick", 
+        change : "change"
+    };
+
+    function dispatchActions (selector, prop, type, uniqueID){
+        //on events
+        if (type === 'custom'){
+            return function(data){
+                var $this = this.el.find_with_root('.' + selector);
+                if ($this.data(uniqueID)){ return; }
+                $this.data(uniqueID, true);
+                if (isObserved(prop)) {
+                    prop.register({ actions : [function(){
                         callAction(prop, $this, data);
-                    }
-                });
-            },
-            'oncheck' : function (root, data){
-                var $this = root.find_with_root('.' + selector);
-                $this.off("change");
-                $this.change(function(){
-                    var dir = $this.prop("checked");
-                    if (isObserved(prop)){
-
-                    } else if (typeof prop === "function") {
-                        callAction(prop, $this, data, dir);
-                    }
-                });
-            },
-            'custom' : function(root, data){
-                var $this = root.find_with_root('.' + selector);
-                if (typeof prop === "function") {
+                    }], elements : [$this] });
+                } else if (typeof prop === "function") {
                     callAction(prop, $this, data);
                 }
-            }
-        };
-        
-        if (custom_actions[type]){
-            return custom_actions[type];
+            };
+        } else if (_map[type]){
+            return function(data){
+                var $this = this.el.find_with_root('.' + selector);
+                if ($this.data(uniqueID)){ return; }
+                $this.data(uniqueID, true);
+                $this.on(_map[type], {
+                    prop : prop,
+                    data : data,
+                    type : type
+                }, eventHandler);
+            };
         }
 
         //everything else
@@ -306,8 +323,9 @@
             }
         };
 
-        var a = function(root, data, cb){
+        var a = function(data){
             var ret;
+            var root = this.el;
             var e = root.find_with_root('.' + selector);
             if (isObserved(prop)) {
                 if (!e.hasClass('sw_init')){
@@ -387,8 +405,8 @@
             $(models).each(function(i, model){
                 var action, prop;
                 var actions = model.split(':');
-                console.log(actions);
                 action = $.trim(actions[0]);
+
                 if (actions[1]) { 
                     prop = $.trim(actions[1]); 
                 } else {
@@ -401,25 +419,28 @@
                 if (root[0] === 'root'){
                     rootAction = parent[root[1]];
                 }
+                
+                var uniqueID = prop+action;
 
                 try {
                     if (isForeach){
                         pushTo.push(dispatchActions(_class, rootAction ? 
-                                                rootAction : prop, action));
+                                                rootAction : prop, action, uniqueID));
 
                     } else {
                         pushTo.push({
                             element : item,
-                            action  : dispatchActions(_class, parent[prop], action)
+                            action  : dispatchActions(_class, parent[prop], action, uniqueID)
                         });
                     }
-                } catch(e){ console.log(e) };
+                } catch(e){ debug(e) };
             });
         });
 
         if (!isForeach){ self.doRender(pushTo, parent); }
         return this;
     };
+
     //=========================================================================
     swift.prototype.model = function (name, obj){
         this.models[name] = obj;
