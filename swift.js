@@ -1,8 +1,7 @@
 (function () {
     "use strict";
-    
+    var sw;
     var queryParser = /(?:^|&)([^&=]*)=?([^&]*)/g;
-    function _nob (){}
 
     $.fn.find_with_root = function(selector) {
         return this.filter(selector).add(this.find(selector));
@@ -10,11 +9,12 @@
 
     //based on http://www.quirksmode.org/js/cookies.html 
     function createCookie(name,value,days) {
+        var expires;
         if (days) {
             var date = new Date();
             date.setTime(date.getTime()+(days*24*60*60*1000));
-            var expires = "; expires="+date.toGMTString();
-        } else { var expires = ""; }
+            expires = "; expires="+date.toGMTString();
+        } else { expires = ""; }
         document.cookie = name+"="+value+expires+"; path=/";
     }
 
@@ -23,8 +23,8 @@
         var ca = document.cookie.split(';');
         for(var i=0;i < ca.length; i++) {
             var c = ca[i];
-            while (c.charAt(0)==' ') { c = c.substring(1,c.length); }
-            if (c.indexOf(nameEQ) == 0) { 
+            while (c.charAt(0) === ' ') { c = c.substring(1,c.length); }
+            if (c.indexOf(nameEQ) === 0) { 
                 return c.substring(nameEQ.length,c.length);
             }
         }
@@ -37,11 +37,11 @@
 
     var cache = { data : {}, templates : {} };
 
-    function swift (){
+    function Swift (){
         var self = this;
         self.routes = {};
         self.params = {};
-        self.elements = {};
+        self.nodeements = {};
         self.models = {};
         self._stash = {};
         self._before_route = [];
@@ -56,7 +56,7 @@
         if (("onhashchange" in window)) {
             window.onhashchange = function () {
                 self._fireRouter();
-            }
+            };
         } else {
             var prevHash = window.location.hash;
             window.setInterval(function () {
@@ -71,6 +71,7 @@
     /*=========================================================================
     * Render
     ==========================================================================*/
+    var _calledObservables = false;
     function isObserved (data){
         return (typeof data === "function" && 
                  data.sw_observe === true);
@@ -80,61 +81,86 @@
         return typeof val !== "undefined";
     }
 
-    function callAction (action, node, data, val){
-        action.call({
-            el : node,
-            data : data,
-            val : val
-        }, data);
-    }
-
-    swift.prototype.compute = function(cb, obsevedValues){
+    Swift.prototype.compute = function(cb, obsevedValues){
+        var registarLater = [];
+        var observed = [];
+        var autoObserver = obsevedValues ? false : true;
         var computed = function (){
-            return cb.apply(this, arguments);
+            var result;
+            if (!obsevedValues){
+                obsevedValues = [];
+                _calledObservables = [];
+                var result = cb.apply(this, arguments);
+                $(_calledObservables).each(function(i, o){
+                    obsevedValues.push(o);
+                });
+
+                $(registarLater).each(function(i, obj){
+                    computed.register(obj);
+                });
+                
+                registarLater = [];
+            } else {
+                result = cb.apply(this, arguments);
+            }
+
+            return result;
+        };
+
+        computed.register = function(obj, ns){
+            if (registarLater.indexOf(obj) === -1){
+                registarLater.push(obj);
+            }
+
+            $(obsevedValues).each(function(i, observe){
+                observe.register(obj, ns);
+            });
+        };
+
+        computed.update = function(d){
+            $(obsevedValues).each(function(i, observe){
+                observe.update(d);
+            });
         };
 
         computed.sw_observe  = true;
         computed.sw_computed = true;
-
-        computed.register = function(ele){
-            console.log(cb);
-            $(obsevedValues).each(function(i, v){
-                v.register(ele);
-            });
-        };
-
-        computed.update = function(ele){
-            $(obsevedValues).each(function(i, v){
-                v.update();
-            });
-        };
         return computed;
     };
 
-    swift.prototype.observe = function(data, cb){
+    Swift.prototype.observe = function(data){
         var _data = data;
-        var _cb   = cb;
-        var observed = [];
+        var parentNode;
+        var namespace;
+        var nodes = [];
+        var compute = [];
 
         var type = (typeof data === "object") ?
                     ($.isArray(data)) ? "array" : "Object" :
                     "string";
 
-        var callEachAction = function(actions, element, data){
-            $(actions).each(function(i, action){
-                callAction(action, element, data);
+        var timeout;
+        var updateObserved = function () {
+            $(compute).each(function(i, obj){
+                if (obj.update){
+                    obj.update();
+                } else {
+                    obj.node.triggerHandler("sw." + obj.type);
+                }
             });
         };
 
         var observe = function(key, val){
+            if ( _calledObservables && 
+                _calledObservables.indexOf(observe) === -1 ){
+                _calledObservables.push(observe);
+            }
+
             //set strings & numbers
             if (type === "string" && isDefined(key)) {
+                if (_data === key) { return; }
                 _data = key;
-                $(observed).each(function(a, obj){
-                    $(obj.elements).each(function(b, element){
-                        callEachAction(obj.actions, element, _data);
-                    });
-                });
+                updateObserved();
                 return;
             }
 
@@ -149,7 +175,7 @@
                         if (old !== JSON.stringify(_data[key])){
                             observe.set(key, _data[key]);
                         }
-                    }, 0);
+                    }, 1);
                     return obj;
                 } else {
                     observe.set(key, val);
@@ -160,87 +186,111 @@
 
         observe.set = function(key, val){
             _data[key] = val;
-            $(observed).each(function(a, obj){
-                var element = obj.elements[key];
-                callEachAction(obj.actions, element, _data[key]);
+            nodes[key].find_with_root(".sw").each(function(i){
+                var node = $(this);
+                setTimeout(function(){
+                    node.triggerHandler("sw.update", val);
+                }, 1);
             });
+            updateObserved();
         };
 
-        observe.update = function(){
-            $(observed).each(function(a, obj){
-                $(obj.elements).each(function(key, element){
-                    callEachAction(obj.actions, element, _data[key]);
+        observe.update = function(data){
+            if (data){
+                if (type === 'array'){
+                    observe.removeAll();
+                    $(data).each(function(i, item){
+                        observe.push(item);
+                    });
+                }
+            } else {
+                $(nodes).each(function(i, node){
+                    node.triggerHandler(namespace);
                 });
+
+                updateObserved();
+            }
+        };
+
+        observe.removeAll = function(){
+            $(_data).each(function(){
+                observe.shift();
             });
         };
 
         observe.each = function(cb){
-            $(_data).each(function(i, item){
-                cb(i, item);
+            $(_data).each(function(i, data){
+                cb(i, data);
             });
         };
 
         observe.push = function(data){
             _data.push(data);
-            $(observed).each(function(a, obj){
-                var node = $(obj.html);
-                callEachAction(obj.actions, node, data);
-                obj.doc.append(node);
-                obj.elements.push(node);
-            });
+            if (parentNode){
+                var elements = parentNode.triggerHandler(namespace, data);
+                $(elements).each(function(i, element){
+                    nodes.push(element);
+                });
+            }
+            updateObserved();
         };
 
         observe.unshift = function(data){
             _data.unshift(data);
-            $(observed).each(function(a, obj){
-                var node = $(obj.html);
-                callEachAction(obj.actions, node, data);
-                obj.doc.prepend(node);
-                obj.elements.unshift(node);
+            var elements = parentNode.triggerHandler(namespace, data);
+            $(elements).each(function(i, element){
+                nodes.unshift(element);
+                element.prependTo(parentNode);
             });
+        };
+        
+        observe.remove = function(items){
+            if (!$.isArray(items)) { items = [items]; }
+            $(items).each(function(i, item){
+                var index = _data.indexOf(item);
+                if (index !== -1){
+                    observe.splice(index,1);
+                }
+            });
+        };
+
+        observe.splice = function(start, end){
+            _data.splice(start, end);
+            if (parentNode){
+                for (var i = start; i < start+end; i++){
+                    var el = nodes[i];
+                    el.remove();
+                }
+                nodes.splice(start, end);
+            }
+            updateObserved();
+        };
+
+        observe.shift = function(){
+            observe.splice(0, 1);
         };
 
         observe.pop = function(){
             var last = _data.length - 1;
-            _data.pop();
-            $(observed).each(function(a, obj){
-                var lastEl = obj.elements[last];
-                obj.elements.pop();
-                lastEl.remove();
-            });
+            observe.splice(last, 1);
         };
+
+        observe.indexOf = function(data){ return _data.indexOf(data); };
         
-        observe.remove = function(item){
-            var index = _data.indexOf(item);
-            observe.splice(index,1);
+        observe.registerParent = function(node, ns){
+            parentNode = node;
+            namespace = "sw." + ns;
         };
 
-        observe.splice = function(start, end){
-            var last = _data.length - 1;
-            _data.splice(start, end);
-            $(observed).each(function(a, obj){
-                for (var i = start; i < start+end; i++){
-                    var el = obj.elements[i];
-                    el.remove();
-                }
-                obj.elements.splice(start, end);
-            });
+        observe.registerArray = function(node, ns){
+            nodes.push(node);
+            namespace = "sw." + ns;
         };
 
-        observe.shift = function(){
-            _data.shift();
-            $(observed).each(function(a, obj){
-                var firstEl = obj.elements[0];
-                obj.elements.shift();
-                firstEl.remove();
-            });
-        };
-
-        observe.indexOf = function(data){ return _data.indexOf(data) };
-
-        observe.register = function(ele){ observed.push(ele); };
-        observe.limit = function(ms){
-            return observe;
+        observe.register = function(obj, ns){
+            if (compute.indexOf(obj) === -1){
+                compute.push(obj);
+            }
         };
 
         observe.type = type;
@@ -249,204 +299,412 @@
         return observe;
     };
 
-    var eventHandler = function(event){
-        var $this = $(this);
-        var prop = event.data.prop;
-        var data = event.data.data;
-        var type = event.data.type;
-
-        if (type === "oncheck"){
-            var dir = $this.prop("checked");
-            if (isObserved(prop)){
-
-            } else if (typeof prop === "function") {
-                callAction(prop, $this, data, dir);
-            }
-        } else if (typeof prop === "function") {
-            callAction(prop, $this, data);
-        }
-    };
-
-    var _map = {
-        oncheck : "change", 
-        click : "click", 
-        dblclick : "dblclick", 
-        change : "change"
-    };
-
-    function dispatchActions (selector, prop, type, uniqueID){
-        //on events
-        if (type === 'custom'){
-            return function(data){
-                var $this = this.el.find_with_root('.' + selector);
-                if ($this.data(uniqueID)){ return; }
-                $this.data(uniqueID, true);
-                if (isObserved(prop)) {
-                    prop.register({ actions : [function(){
-                        callAction(prop, $this, data);
-                    }], elements : [$this] });
-                } else if (typeof prop === "function") {
-                    callAction(prop, $this, data);
-                }
-            };
-        } else if (_map[type]){
-            return function(data){
-                var $this = this.el.find_with_root('.' + selector);
-                if ($this.data(uniqueID)){ return; }
-                $this.data(uniqueID, true);
-                $this.on(_map[type], {
-                    prop : prop,
-                    data : data,
-                    type : type
-                }, eventHandler);
-            };
-        }
-
-        //everything else
-        var value_actions = {
-            value : function(e, ret){ e.val(ret); },
-            text  : function(e, ret){ e.text(ret); },
-            check : function(e, ret){ e.prop( "checked", ret ? true : false ); },
-            class : function(e, ret){
-                var _class = "";
-                if (typeof ret === "string") {
-                    if (ret === ""){
-                        _class = e.data("sw-class");
-                    } else {
-                        e.data("sw-class", ret);
-                        _class = ret;
-                    }
-                } else {
-                    _class = prop;
-                }
-                e[ret ? "addClass" : "removeClass"](_class);
-            }
-        };
-
-        var a = function(data){
-            var ret;
-            var root = this.el;
-            var e = root.find_with_root('.' + selector);
-            if (isObserved(prop)) {
-                if (!e.hasClass('sw_init')){
-                    var obs = { actions : [a], elements : [e] };
-                    prop.register(obs);
-                }
-                e.addClass('sw_init');
-                ret = prop();
-            } else if (typeof prop === "function"){
-                ret = prop(e);
-            } else {
-                ret = data[prop];
-            }
-            value_actions[type](e, ret);
-        };
-        return a;
-    }
-
-    swift.prototype.doRender = function(items, parent){
-        var self = this;
-        $(items).each(function(i, item){
-            if (typeof item === "object" && item.isForeach ){
-                var doc = item.doc;
-                var html = "<input type='hidden' class='sw-index'>" + item.clone.html();
-                var _isObserved = isObserved(item.data);
-                var foreach = _isObserved ? item.data.data : item.data;
-                var obs = { actions : item.actions, elements : [], 
-                            doc : doc, html : html };
-
-                $(foreach).each(function(i, data){
-                    var node = $(html);
-                    $(item.actions).each(function(x, action){
-                        callAction(action, node, data);
-                    });
-                    doc.append(node);
-                    obs.elements.push(node);
+    var _actionMap = {
+        'submit' : {
+            init : function(){
+                var self = this;
+                self.node.on("submit", function(e){
+                    e.preventDefault();
+                    self.valueAccess(self.data);
+                    return false;
                 });
-                if ( _isObserved ){ item.data.register(obs); }
-            } else {
-                callAction(item.action, item.element, parent);
+            },
+        },
+
+        'dblclick' : {
+            init : function(){
+                var self = this;
+                self.node.on("dblclick", function(){
+                    self.valueAccess(self.data);
+                    return false;
+                });
+            },
+        },
+
+        'click' : {
+            init : function(){
+                var self = this;
+                self.node.on("click", function(){
+                    self.valueAccess(self.data);
+                    return false;
+                });
             }
-        });
+        },
+
+        'check' : {
+            init : function(){
+                var self = this;
+                self.node.on("change", function(){
+                    self.val = self.node.prop("checked");
+                    self.valueAccess(self.data);
+                    return false;
+                });
+            }
+        },
+
+        'enable' : {
+            update : function(){
+                this.node.prop('disabled', this.valueAccess(self.data) ? "" : "disabled");
+            }
+        },
+
+        'disable' : {
+            update : function(){
+                this.node.prop('disabled', this.valueAccess(self.data) ? "disabled" : "");
+            }
+        },
+
+        'caption' : {
+            init : function(){
+                this.node.prepend("<option selected>" + 
+                    (this.val ? this.val : this.name) +
+                    "</option>");
+            }
+        },
+
+        'text' : {
+            update : function(){
+                this.val = this.valueAccess();
+                this.node.text(this.val);
+            }
+        },
+
+        'func' : {
+            init : function(){
+                this.valueAccess(this.data);
+            }
+        },
+
+        'class' : {
+            update : function(){
+                var _class = "";
+                this.val = this.valueAccess();
+                if (typeof this.val === "string") {
+                    if (this.val === ""){
+                        _class = this._class;
+                    } else {
+                        this._class = this.val;
+                        _class = this.val;
+                    }
+                } else {
+                    _class = this.name;
+                }
+                this.node[this.val ? "addClass" : "removeClass"](_class);
+            }
+        },
+
+        'value' : {
+            init : function () {
+                var self = this;
+                if (self.observe){
+                    self.node.on("change.sw", function(){
+                        self.valueAccess(self.node.val());
+                    });
+                }
+            },
+
+            update : function(){
+                this.node.val(this.valueAccess());
+            }
+        },
+
+        'valueUpdate' : {
+            init : function(){
+                var self = this;
+                self.node.on('keydown', function(){
+                    setTimeout(function(){
+                        self.node.triggerHandler("change.sw");
+                   },1);
+                });
+            }
+        },
+
+        'checked' : {
+            init : function(){
+                var self = this;
+                if (self.observe){
+                    self.node.on("change", function(){
+                        self.valueAccess(self.node.prop("checked"));
+                    });
+                }
+            },
+            update : function(){
+                this.node.prop( "checked", this.valueAccess() ? true : false );
+            }
+        },
+
+        'visible' : {
+            update : function(){
+                if ( this.valueAccess() ){ this.node.show(); } 
+                else { this.node.hide(); }
+            }
+        },
+
+        'options' : {
+            init : function (){
+                var self = this;
+                var node = self.node;
+                var updateSelected;
+                var optionsAttr;
+                var _isObservedSelected;
+                //wait other bindings to load
+                self.after(['selectedOptions', 'optionsAttr'], function(){
+                    self.val = self.valueAccess();
+                    node.off("sw.options");
+                    node.attr("data-sw-bind", "foreach: " + self.name);
+                    
+                    if (self.bindings.selectedOptions){
+                        updateSelected = self.bindings.selectedOptions.observe;
+                    }
+
+                    if (self.bindings.optionsAttr){
+                        optionsAttr = self.bindings.optionsAttr.valueAccess();
+                    } else {
+                        optionsAttr = "text : $data, value: $data";
+                    }
+                    
+                    //convert to foreach and trigger
+                    node.append("<option data-sw-bind='" + optionsAttr + "'></option>");
+                    _parseActions( "foreach: " + self.name, self.node, self.data);
+                    node.triggerHandler('sw');
+                    
+                    if (updateSelected) {
+                        node.on("change.sw", function(){
+                            var data = self.observe ? self.observe.data : self.val;
+                            if (!$.isArray){ data = [data]; }
+                            var newArr = [];
+                            var selectedNodes = $(this).find(":selected");
+                            $(selectedNodes).each(function(){
+                                var index = $(this).index();
+                                var val = data[index];
+                                newArr.push(val);
+                            });
+                            updateSelected.update(newArr);
+                        });
+
+                        self.select = function(){
+                            var data = self.observe ? self.observe.data : self.val;
+                            var items = updateSelected();
+                            if (!$.isArray(items)){ items = [items]; }
+                            self.node.find(":selected").prop('selected', false);
+                            $(items).each(function(i, item){
+                                var index = data.indexOf(item);
+                                self.node.find('option').eq(index).prop('selected', true);
+                            });
+                        };
+
+                        self.select();
+                        updateSelected.register(self);
+                        self.node.on("sw.options", self.select);
+                    }
+                });
+            }
+        },
+
+        optionsAttr : {
+            compile : function(){ return this.str; }
+        }
     };
 
-    var _model    = [];
-    var ele_count = 0;
-    swift.prototype.render = function(obj, doc, p, m, isForeach){
-        var self = this;
-        var tree = doc ? $(doc) : $(document);
-        var parent = p || obj;
-        var pushTo = m || _model;
+    var RootObject;
+    function _parseActions (str, node, data, parent){
+        var bindings = {};
+        var array = str.match(/\{\{.*\}\}/g);
+        str = str.replace(/\{\{.*\}\}/, '[[00]]');
 
-        //parse data-sw-foreach
-        tree.find('[data-sw-foreach]').each( function(){
-            var item = $(this);
-            var data = item.attr('data-sw-foreach');
-            var _isObserved = isObserved(obj[data]);
-            var foreach = {
-                isForeach : true,
-                doc       : item,
-                clone     : item.clone(true),
-                data      : obj[data],
-                actions   : [],
+        var models = str.split(',');
+        $(models).each(function(i, model){
+            var compile;
+            var actions = model.split(":");
+            var type    = $.trim(actions[0]);
+            var name    = $.trim(actions[1]);
+
+            var root    = 'self';
+            type   = name ? type : "func";
+            name = name ? name : type;
+            //parse root.name
+            var prop = name.split('.');
+            if (prop.length === 2){
+                name = prop[1];
+                root = prop[0];
+            }
+            
+            if (name === '[[00]]'){ 
+                name = array.shift();
+                //remove leading {{ and ending }}
+                name = $.trim(name.substring(2, name.length - 2));
+                compile = name;
+            }
+
+            if (type === 'foreach'){
+                var html = node.clone().html();
+                node.html("");
+            }
+            
+            var self = {
+                bindings : bindings,
+                str      : name,
+                //TODO: better way to detect previous loaded bindings
+                //stupid way to watch for loading previous binding
+                after    : function(names, cb){
+                    var len = names.length;
+                    $(names).each(function(i, name){
+                        if (bindings[name]){
+                            var timeout = setInterval(function(){
+                                if (bindings[name].initiated){
+                                    clearInterval(timeout);
+                                    if (--len === 0) { cb(); }
+                                }
+                            }, 10);
+                        } else { --len; }
+                    });
+                    if (len === 0){ cb(); }
+                }
             };
 
-            pushTo.push(foreach);
-            item.html("");
-            self.render(foreach.data, foreach.clone, obj, foreach.actions, true);
-        });
-
-        tree.find('[data-sw-bind]').each( function(i){
-            var _class = "_sw_el_" + ele_count++;
-            var item = $(this);
-            item.addClass(_class);
-
-            var models = item.attr('data-sw-bind').split(',');
-            $(models).each(function(i, model){
-                var action, prop;
-                var actions = model.split(':');
-                action = $.trim(actions[0]);
-
-                if (actions[1]) { 
-                    prop = $.trim(actions[1]); 
+            bindings[type] = self;
+            self.initiated = false;
+            node.on("sw." + type, function init (e, currentData){
+                var val;
+                if (currentData && e.namespace !== 'update'){
+                    val = currentData;
                 } else {
-                    prop = action;
-                    action = 'custom';
+                    if (name === '$data'){
+                        val = data;
+                    } else if (root === 'self'){
+                        val = data[name];
+                    } else if (root === 'parent') {
+                        val = parent[name];
+                    } else if (root === 'root'){
+                        val = RootObject[name];
+                    } else {
+                        val = data[root][name];
+                    }
                 }
                 
-                var rootAction;
-                var root = prop.split('.');
-                if (root[0] === 'root'){
-                    rootAction = parent[root[1]];
+                var observe = val;
+                var _isObserved = isObserved(observe);
+                if (_isObserved){
+                    self.observe = observe;
+                    val = val.data;
                 }
-                
-                var uniqueID = prop+action;
 
-                try {
-                    if (isForeach){
-                        pushTo.push(dispatchActions(_class, rootAction ? 
-                                                rootAction : prop, action, uniqueID));
+                var element;
+                if (type === 'foreach'){
+                    if (!$.isArray(val)){ val = [val]; }
+                    var all = [];
+                    $(val).each(function(i, d){
+                        element =  $(html);
+                        sw.constructActions(d, element, data);
+                        node.append(element);
+                        if (_isObserved) {
+                            observe.registerArray(element, type);
+                        } else {
+                            all.push(element);
+                        }
+                    });
+
+                    if (_isObserved) {
+                        observe.registerParent(node, type);
+                    }
+
+                    return all;
+                } else {
+                    element = node;
+                    var binding = _actionMap[type];
+
+                    if (typeof observe === 'function'){
+                        self.valueAccess = function(d){
+                            self.val = observe.call(self, d);
+                            return self.val;
+                        };
+                    } else {
+                        self.valueAccess = function(){
+                            return val;
+                        };
+                    }
+
+                    self.data = data;
+                    self.node = element;
+                    self.name = name;
+                    self.type = type;
+
+                    if (binding){    
+                        if (compile && binding.compile){
+                            self.valueAccess = function(){
+                                return binding.compile.call(self, data);
+                            };
+                        } else if (compile){
+                            if (!self.compiled){
+                                var fn = new Function('self', "return " + compile);
+                                self.compiled = sw.compute(function compile(){
+                                    return fn.call(self, self.data);
+                                });
+                                
+                                self.compiled.register(self);
+                            }
+                            self.valueAccess = function(d){
+                                self.val = self.compiled.apply(self, arguments);
+                                return self.val;
+                            };
+                        }
+
+                        if (!self.initiated){
+                            if (binding.init){
+                                binding.init.call(self, data);
+                            }
+
+                            if ( _isObserved ) {
+                                observe.register(self);
+                            }
+
+                            if (binding.update){
+                                element.addClass('sw').on("sw.update", init);
+                            }
+                        }
+
+                        if (binding.update){
+                            binding.update.call(self, data);
+                        }
 
                     } else {
-                        pushTo.push({
-                            element : item,
-                            action  : dispatchActions(_class, parent[prop], action, uniqueID)
-                        });
+                        console.log("Not Found " + type);
                     }
-                } catch(e){ debug(e) };
+
+                    self.initiated = true;
+                }
             });
         });
+    }
 
-        if (!isForeach){ self.doRender(pushTo, parent); }
-        return this;
+    Swift.prototype.constructActions = function(data, tree, parent) {
+        var Nodes = [];
+        var i = 0;
+        while (1) {
+            var n = tree.find_with_root('[data-sw-bind]').get(i++);
+            if (!n){ break; }
+            n = $(n);
+            _parseActions(n.attr('data-sw-bind'), n, data, parent);
+            Nodes.push(n);
+        }
+
+        $(Nodes).each(function(i, n){
+            n.triggerHandler('sw');
+        });
+    };
+
+    Swift.prototype.render = function(parent, doc){
+        RootObject = parent;
+        doc = doc ? $(doc) : $(document);
+        this.constructActions(parent, doc);
     };
 
     //=========================================================================
-    swift.prototype.model = function (name, obj){
+    Swift.prototype.model = function (name, obj){
         this.models[name] = obj;
     };
 
-    swift.prototype._fireRouter = function (name, fn){
+    Swift.prototype._fireRouter = function (){
         var self = this;
         var location = window.location.hash;
         self.location = location;
@@ -494,23 +752,23 @@
         }
     };
     
-    swift.prototype.not_found = function (fn){
+    Swift.prototype.not_found = function (fn){
         this._not_found = fn;
     };
 
-    swift.prototype.before_route = function (fn){
+    Swift.prototype.before_route = function (fn){
         this._before_route.push(fn);
     };
 
-    swift.prototype.route = function (name, fn){
+    Swift.prototype.route = function (name, fn){
         this.routes["#" + name] = fn;
     };
 
-    swift.prototype.param = function (name) {
+    Swift.prototype.param = function (name) {
         return this.params[name];
     };
 
-    swift.prototype.before_view = function (name, cb){
+    Swift.prototype.before_view = function (name, cb){
         if (arguments.length === 1) {
             cb = name;
             name = '*';
@@ -521,7 +779,7 @@
         });
     };
 
-    swift.prototype.view = function (elem, url, cb) {
+    Swift.prototype.view = function (elem, url, cb) {
         var self = this;
         var el = $(elem);
         el.hide();
@@ -563,7 +821,7 @@
         }
     };
 
-    swift.prototype.element = function (name, html, callback) {
+    Swift.prototype.element = function (name, html, callback) {
         if (typeof html === 'function'){
             callback = html;
             html = '';
@@ -580,7 +838,7 @@
         return this.elements[name];
     };
 
-    swift.prototype.cookie = function (name,value,days) {
+    Swift.prototype.cookie = function (name,value,days) {
         if (arguments.length === 1){
             return readCookie(name);
         } else {
@@ -588,11 +846,18 @@
         }
     };
     
-    swift.prototype.redirect = function (where) {
+    Swift.prototype.redirect = function (where, params) {
+        if (params){
+            var str = [];
+            for (var key in params){
+                str.push(key + '=' + params[key]);
+            }
+            where += '?' + str.join('&');
+        }
         window.location.hash = where;
     };
 
-    swift.prototype.stash = function (name,val) {
+    Swift.prototype.stash = function (name,val) {
         if (val){
             this._stash[name] = val;
         } else {
@@ -602,7 +867,7 @@
         return val;
     };
     
-    swift.prototype.cache = function (name,val) {
+    Swift.prototype.cache = function (name,val) {
         if (val){
             cache.data[name] = val;
         } else {
@@ -611,15 +876,15 @@
         return val || {};
     };
 
-    swift.prototype.run = function () {
+    Swift.prototype.run = function () {
         this._fireRouter();
     };
 
     if (typeof require === 'function'){
         define(['jQuery'], function(require, exports, $){
-            this.exports = new swift();
+            sw = this.exports = new Swift();
         });
     } else {
-        window.sw = window.swift = new swift();
+        sw = window.sw = window.Swift = new Swift();
     }
 }());
