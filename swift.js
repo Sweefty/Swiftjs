@@ -369,6 +369,13 @@
             }
         },
 
+        'html' : {
+            update : function(){
+                this.val = this.valueAccess();
+                this.node.html(this.val);
+            }
+        },
+
         'func' : {
             init : function(){
                 this.valueAccess(this.data);
@@ -390,6 +397,22 @@
                     _class = this.name;
                 }
                 this.node[this.val ? "addClass" : "removeClass"](_class);
+            }
+        },
+
+        'toggleClass' : {
+            update : function(){
+                var _class = "";
+                this.val = this.valueAccess();
+                if (this._oldClass){
+                    this.node.removeClass(this._oldClass);
+                }
+                
+                if (this.val){
+                    this.node.addClass(this.val);
+                    this._oldClass = this.val;
+                }
+                
             }
         },
 
@@ -437,6 +460,13 @@
             update : function(){
                 if ( this.valueAccess() ){ this.node.show(); } 
                 else { this.node.hide(); }
+            }
+        },
+
+        'invisible' : {
+            update : function(){
+                if ( this.valueAccess() ){ this.node.hide(); } 
+                else { this.node.show(); }
             }
         },
 
@@ -505,7 +535,15 @@
             compile : function(){ return this.str; }
         }
     };
+    
+    Swift.prototype.getBinding = function(name){
+        return _actionMap[name];
+    };
 
+    Swift.prototype.registerBinding = function(name, action){
+        _actionMap[name] = action;
+    };
+    
     var RootObject;
     function _parseActions (str, node, data, parent){
         var bindings = {};
@@ -559,7 +597,9 @@
                         } else { --len; }
                     });
                     if (len === 0){ cb(); }
-                }
+                },
+
+                root : RootObject
             };
 
             bindings[type] = self;
@@ -591,6 +631,8 @@
 
                 var element;
                 if (type === 'foreach'){
+                    var oldRoot = RootObject;
+                    RootObject = self.root;
                     if (!$.isArray(val)){ val = [val]; }
                     var all = [];
                     $(val).each(function(i, d){
@@ -603,7 +645,8 @@
                             all.push(element);
                         }
                     });
-
+                    
+                    RootObject = oldRoot;
                     if (_isObserved) {
                         observe.registerParent(node, type);
                     }
@@ -629,7 +672,7 @@
                     self.name = name;
                     self.type = type;
 
-                    if (binding){    
+                    if (binding){
                         if (compile && binding.compile){
                             self.valueAccess = function(){
                                 return binding.compile.call(self, data);
@@ -773,6 +816,7 @@
             cb = name;
             name = '*';
         }
+        
         this._before_view.push({
             name : name,
             cb : cb
@@ -801,7 +845,8 @@
             if (cb && typeof cb === 'function'){
                 cb.apply(self, [el]);
             }
-            el.fadeIn(500);
+            //el.fadeIn(500);
+            el.show();
         };
 
         if (cache.templates[url]){
@@ -838,7 +883,7 @@
         return this.elements[name];
     };
 
-    Swift.prototype.cookie = function (name,value,days) {
+    Swift.prototype.cookie = function (name, value, days) {
         if (arguments.length === 1){
             return readCookie(name);
         } else {
