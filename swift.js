@@ -7,7 +7,7 @@
         return this.filter(selector).add(this.find(selector));
     };
 
-    //based on http://www.quirksmode.org/js/cookies.html 
+    //based on http://www.quirksmode.org/js/cookies.html
     function createCookie(name,value,days) {
         var expires;
         if (days) {
@@ -90,7 +90,7 @@
             if (!obsevedValues){
                 obsevedValues = [];
                 _calledObservables = [];
-                var result = cb.apply(this, arguments);
+                result = cb.apply(this, arguments);
                 $(_calledObservables).each(function(i, o){
                     obsevedValues.push(o);
                 });
@@ -139,7 +139,6 @@
                     ($.isArray(data)) ? "array" : "Object" :
                     "string";
 
-        var timeout;
         var updateObserved = function () {
             $(compute).each(function(i, obj){
                 if (obj.update){
@@ -175,7 +174,7 @@
                         if (old !== JSON.stringify(_data[key])){
                             observe.set(key, _data[key]);
                         }
-                    }, 1);
+                    }, 10);
                     return obj;
                 } else {
                     observe.set(key, val);
@@ -186,13 +185,16 @@
 
         observe.set = function(key, val){
             _data[key] = val;
-            nodes[key].find_with_root(".sw").each(function(i){
-                var node = $(this);
-                setTimeout(function(){
-                    node.triggerHandler("sw.update", val);
-                }, 1);
-            });
-            updateObserved();
+
+            if (nodes.length){
+                nodes[key].find_with_root(".sw").each(function(i){
+                    var node = $(this);
+                    setTimeout(function(){
+                        node.triggerHandler("sw.update", val);
+                    }, 1);
+                });
+                updateObserved();
+            }
         };
 
         observe.update = function(data){
@@ -207,7 +209,6 @@
                 $(nodes).each(function(i, node){
                     node.triggerHandler(namespace);
                 });
-
                 updateObserved();
             }
         };
@@ -287,7 +288,7 @@
             namespace = "sw." + ns;
         };
 
-        observe.register = function(obj, ns){
+        observe.register = function(obj){
             if (compute.indexOf(obj) === -1){
                 compute.push(obj);
             }
@@ -344,13 +345,13 @@
 
         'enable' : {
             update : function(){
-                this.node.prop('disabled', this.valueAccess(self.data) ? "" : "disabled");
+                this.node.prop('disabled', this.valueAccess(this.data) ? "" : "disabled");
             }
         },
 
         'disable' : {
             update : function(){
-                this.node.prop('disabled', this.valueAccess(self.data) ? "disabled" : "");
+                this.node.prop('disabled', this.valueAccess(this.data) ? "disabled" : "");
             }
         },
 
@@ -402,7 +403,6 @@
 
         'toggleClass' : {
             update : function(){
-                var _class = "";
                 this.val = this.valueAccess();
                 if (this._oldClass){
                     this.node.removeClass(this._oldClass);
@@ -412,7 +412,6 @@
                     this.node.addClass(this.val);
                     this._oldClass = this.val;
                 }
-                
             }
         },
 
@@ -437,7 +436,7 @@
                 self.node.on('keydown', function(){
                     setTimeout(function(){
                         self.node.triggerHandler("change.sw");
-                   },1);
+                   }, 1);
                 });
             }
         },
@@ -476,7 +475,6 @@
                 var node = self.node;
                 var updateSelected;
                 var optionsAttr;
-                var _isObservedSelected;
                 //wait other bindings to load
                 self.after(['selectedOptions', 'optionsAttr'], function(){
                     self.val = self.valueAccess();
@@ -495,8 +493,7 @@
                     
                     //convert to foreach and trigger
                     node.append("<option data-sw-bind='" + optionsAttr + "'></option>");
-                    _parseActions( "foreach: " + self.name, self.node, self.data);
-                    node.triggerHandler('sw');
+                    self.applyForeach();
                     
                     if (updateSelected) {
                         node.on("change.sw", function(){
@@ -532,7 +529,9 @@
         },
 
         optionsAttr : {
-            compile : function(){ return this.str; }
+            compile : function(){ 
+                return this.str; 
+            }
         }
     };
     
@@ -598,7 +597,12 @@
                     });
                     if (len === 0){ cb(); }
                 },
-
+                applyForeach : function(data){
+                    var self = this;
+                    data = data || self.data;
+                    _parseActions( "foreach: " + self.name, self.node, data);
+                    self.node.triggerHandler('sw');
+                },
                 root : RootObject
             };
 
@@ -782,9 +786,9 @@
 
         //fire router callback
         var fn = self.routes[self.hash] || self._not_found;
-        if (typeof fn === 'function'){
+        if (fn && typeof fn === 'function'){
             fn.apply(self,[self]);
-        } else if (typeof fn === 'string' && require && 
+        } else if (fn && typeof fn === 'string' && require && 
                     typeof require === 'function'){
 
             require(self.controllersPath + fn, function(ret){
@@ -845,7 +849,6 @@
             if (cb && typeof cb === 'function'){
                 cb.apply(self, [el]);
             }
-            //el.fadeIn(500);
             el.show();
         };
 
@@ -864,23 +867,6 @@
                 cache: false
             });
         }
-    };
-
-    Swift.prototype.element = function (name, html, callback) {
-        if (typeof html === 'function'){
-            callback = html;
-            html = '';
-        } else if ($.isArray(html)) {
-            html = html.join("\n");
-        } else {
-            html = $(html);
-        }
-
-        this.elements[name] = {
-            html : $(html),
-            cb : callback
-        };
-        return this.elements[name];
     };
 
     Swift.prototype.cookie = function (name, value, days) {
