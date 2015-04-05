@@ -41,7 +41,6 @@
         var self = this;
         self.routes = {};
         self.params = {};
-        self.nodeements = {};
         self.models = {};
         self._stash = {};
         self._before_route = [];
@@ -69,10 +68,9 @@
     }
 
     /*=========================================================================
-    * Render
+    * helpers
     ==========================================================================*/
-    var _calledObservables = false;
-    function isObserved (data){
+    var isObserved = Swift.prototype.compute = function(data){
         return (typeof data === "function" && 
                  data.sw_observe === true);
     }
@@ -81,6 +79,10 @@
         return typeof val !== "undefined";
     }
 
+    /*=========================================================================
+    * compute
+    ==========================================================================*/
+    var _calledObservables = false;
     Swift.prototype.compute = function(cb, obsevedValues){
         var registarLater = [];
         var observed = [];
@@ -128,6 +130,9 @@
         return computed;
     };
 
+    /*=========================================================================
+    * observe
+    ==========================================================================*/
     Swift.prototype.observe = function(data){
         var _data = data;
         var parentNode;
@@ -185,14 +190,17 @@
 
         observe.set = function(key, val){
             _data[key] = val;
-
-            if (nodes.length){
-                nodes[key].find_with_root(".sw").each(function(i){
-                    var node = $(this);
-                    setTimeout(function(){
-                        node.triggerHandler("sw.update", val);
-                    }, 1);
+            if (parentNode){
+                $(parentNode).each(function(i, obj){
+                    var nodes = obj.nodes;
+                    nodes[key].find_with_root(".sw").each(function(i){
+                        var node = $(this);
+                        setTimeout(function(){
+                            node.triggerHandler("sw.update", val);
+                        }, 1);
+                    });
                 });
+                
                 updateObserved();
             }
         };
@@ -219,6 +227,27 @@
             });
         };
 
+        observe.sort = function(fn){
+            _data.sort(fn);
+            if (parentNode){
+                $(parentNode).each(function(i, obj){
+                    var nodes = obj.nodes;
+                    $(nodes).each(function(i, n){
+                        n.remove();
+                        nodes.shift();
+                    });
+
+                    $(_data).each(function(i, d){
+                        var elements = obj.parent.triggerHandler(namespace, d);
+                        $(elements).each(function(i, element){
+                            obj.nodes.push(element);
+                        });
+                    });
+                });
+            }
+            updateObserved();
+        };
+
         observe.each = function(cb){
             $(_data).each(function(i, data){
                 cb(i, data);
@@ -228,9 +257,11 @@
         observe.push = function(data){
             _data.push(data);
             if (parentNode){
-                var elements = parentNode.triggerHandler(namespace, data);
-                $(elements).each(function(i, element){
-                    nodes.push(element);
+                $(parentNode).each(function(i, obj){
+                    var elements = obj.parent.triggerHandler(namespace, data);
+                    $(elements).each(function(i, element){
+                        obj.nodes.push(element);
+                    });
                 });
             }
             updateObserved();
@@ -238,11 +269,16 @@
 
         observe.unshift = function(data){
             _data.unshift(data);
-            var elements = parentNode.triggerHandler(namespace, data);
-            $(elements).each(function(i, element){
-                nodes.unshift(element);
-                element.prependTo(parentNode);
-            });
+            if (parentNode){
+                $(parentNode).each(function(i, obj){
+                    var elements = obj.parent.triggerHandler(namespace, data);
+                    $(elements).each(function(i, element){
+                        obj.nodes.unshift(element);
+                        element.prependTo(obj.parent);
+                    });
+                });
+            }
+            updateObserved();
         };
         
         observe.remove = function(items){
@@ -250,7 +286,7 @@
             $(items).each(function(i, item){
                 var index = _data.indexOf(item);
                 if (index !== -1){
-                    observe.splice(index,1);
+                    observe.splice(index, 1);
                 }
             });
         };
@@ -258,11 +294,16 @@
         observe.splice = function(start, end){
             _data.splice(start, end);
             if (parentNode){
-                for (var i = start; i < start+end; i++){
-                    var el = nodes[i];
-                    el.remove();
-                }
-                nodes.splice(start, end);
+                $(parentNode).each(function(i, obj){
+                    var nodes = obj.nodes;
+                    for (var i = start; i < start+end; i++){
+                        var el = nodes[i];
+                        if (el) {
+                            el.remove();
+                        }
+                    }
+                    nodes.splice(start, end);
+                });
             }
             updateObserved();
         };
@@ -279,11 +320,26 @@
         observe.indexOf = function(data){ return _data.indexOf(data); };
         
         observe.registerParent = function(node, ns){
-            parentNode = node;
+            var parent_object = {
+                parent : node,
+                nodes  : []
+            };
+
+            $(nodes).each(function(i, u){
+                parent_object.nodes.push(u);
+            });
+
+            nodes = [];
+            if (parentNode){
+                parentNode.push(parent_object);
+            } else {
+                parentNode = [parent_object];
+            }
             namespace = "sw." + ns;
         };
 
         observe.registerArray = function(node, ns){
+            console.info('SSSSSSSS');
             nodes.push(node);
             namespace = "sw." + ns;
         };
@@ -300,6 +356,10 @@
         return observe;
     };
 
+
+    /*=========================================================================
+    * Rendering methods
+    ==========================================================================*/
     var _actionMap = {
         'submit' : {
             init : function(){
@@ -492,6 +552,7 @@
                     }
                     
                     //convert to foreach and trigger
+                    node.attr("data-sw-bind", "foreach: " + self.name);
                     node.append("<option data-sw-bind='" + optionsAttr + "'></option>");
                     self.applyForeach();
                     
@@ -598,10 +659,12 @@
                     if (len === 0){ cb(); }
                 },
                 applyForeach : function(data){
-                    var self = this;
-                    data = data || self.data;
-                    _parseActions( "foreach: " + self.name, self.node, data);
-                    self.node.triggerHandler('sw');
+                    sw.render(data || this.data, this.node);
+                    //this.node.removeAttr('data-sw-bind');
+                },
+                render : function(data){
+                    this.node.removeAttr('data-sw-bind');
+                    sw.render(data || this.data, this.node);
                 },
                 root : RootObject
             };
@@ -740,10 +803,15 @@
         });
     };
 
-    Swift.prototype.render = function(parent, doc){
-        RootObject = parent;
+    Swift.prototype.renderElement = function(el, obj, parent){
+        _parseActions(el.attr('data-sw-bind'), el, obj, parent);
+        el.triggerHandler('sw');
+    };
+
+    Swift.prototype.render = function(obj, doc){
+        RootObject = obj;
         doc = doc ? $(doc) : $(document);
-        this.constructActions(parent, doc);
+        this.constructActions(obj, doc);
     };
 
     //=========================================================================
@@ -803,16 +871,15 @@
         this._not_found = fn;
     };
 
+    /*=========================================================================
+    * functions to run before routing
+    ==========================================================================*/
     Swift.prototype.before_route = function (fn){
         this._before_route.push(fn);
     };
 
     Swift.prototype.route = function (name, fn){
         this.routes["#" + name] = fn;
-    };
-
-    Swift.prototype.param = function (name) {
-        return this.params[name];
     };
 
     Swift.prototype.before_view = function (name, cb){
@@ -867,6 +934,10 @@
                 cache: false
             });
         }
+    };
+
+    Swift.prototype.param = function (name) {
+        return this.params[name];
     };
 
     Swift.prototype.cookie = function (name, value, days) {
