@@ -330,6 +330,7 @@
             });
 
             nodes = [];
+            
             if (parentNode){
                 parentNode.push(parent_object);
             } else {
@@ -339,7 +340,6 @@
         };
 
         observe.registerArray = function(node, ns){
-            console.info('SSSSSSSS');
             nodes.push(node);
             namespace = "sw." + ns;
         };
