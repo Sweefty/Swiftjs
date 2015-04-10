@@ -70,7 +70,7 @@
     /*=========================================================================
     * helpers
     ==========================================================================*/
-    var isObserved = Swift.prototype.compute = function(data){
+    var isObserved = Swift.prototype.isObserved = function(data){
         return (typeof data === "function" && 
                  data.sw_observe === true);
     }
@@ -314,7 +314,9 @@
 
         observe.pop = function(){
             var last = _data.length - 1;
+            var ret = _data[last];
             observe.splice(last, 1);
+            return ret;
         };
 
         observe.indexOf = function(data){ return _data.indexOf(data); };
@@ -804,6 +806,7 @@
     };
 
     Swift.prototype.renderElement = function(el, obj, parent){
+        RootObject = obj;
         _parseActions(el.attr('data-sw-bind'), el, obj, parent);
         el.triggerHandler('sw');
     };
