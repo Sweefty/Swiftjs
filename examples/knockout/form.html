@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <style type="text/css">
+        
+        .hide {
+            display: none;
+        }
+
+        .show {
+            display: none;
+        }
+
+        .hi {
+            background: red;
+        }
+
+        </style>
+        <meta charset="utf-8">
+        <title>Form Text Input</title>
+    </head>
+    <body>
+        <div id="container">
+            <p>First name: <input data-sw-bind="value: firstName" /></p>
+            <p>Last name: <input data-sw-bind="value: lastName" /></p>
+            <h2>Hello, <span data-sw-bind="text: fullName, class: hi"> </span>!</h2>
+        </div>
+
+        <script type="text/javascript" 
+                src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
+        </script>
+        <script src="../../swift.js"></script>
+        <script type="text/javascript">
+            // Here's my data model
+            var ViewModel = function(first, last) {
+                var self = this;
+                this.firstName = sw.observe(first);
+                this.lastName  = sw.observe(last);
+                this.hi = sw.observe(true);
+
+                var i = 0;
+                var intr = setInterval(function(){
+                    if (i++ > 3){ clearInterval(intr) }
+                    self.hi(self.hi() ? false : true);
+                },1000);
+                
+                this.fullName = sw.compute(function() {
+                    return self.firstName() + " " + self.lastName();
+                }, [this.firstName, this.lastName]);
+
+            };
+            sw.render(new ViewModel("Planet", "Earth")); // rendering starts here
+        </script>
+    </body>
+</html>

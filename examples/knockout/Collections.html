@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<style type="text/css">
+			body { font-family: arial; font-size: 14px; }
+			.liveExample { padding: 1em; background-color: #EEEEDD; border: 1px solid #CCC; max-width: 655px; }
+			.liveExample input { font-family: Arial; }
+			.liveExample b { font-weight: bold; }
+			.liveExample p { margin-top: 0.9em; margin-bottom: 0.9em; }
+			.liveExample select[multiple] { width: 100%; height: 8em; }
+			.liveExample h2 { margin-top: 0.4em; }
+
+			.renderTime { color: #777; font-style: italic; font-size: 0.8em; }
+
+			li { list-style-type: disc; margin-left: 20px; }
+		</style>
+		<meta charset="utf-8">
+		<title>Collection Examples</title>
+
+	</head>
+	<body>
+	<div class="liveExample">
+		<h2>People</h2>
+		<ul data-sw-bind="foreach: people">
+		    <li>
+		        <div>
+		            <span data-sw-bind="text: name"> </span> has <span data-sw-bind='text: childrenLength'>&nbsp;</span> children:
+		            <a href='#' data-sw-bind='click: addChild '>Add child</a>
+		            <a href='#' data-sw-bind='click: parent.delete '>Delete</a>
+		            <span class='renderTime' data-sw-bind='visible: root.showRenderTimes'>
+		                (person rendered at <span data-sw-bind='text: root.date' > </span>)
+		            </span>
+		        </div>
+
+		        <ul data-sw-bind="foreach: children">
+		            <li>
+		                <span data-sw-bind="text: $data"></span>
+		                <span class='renderTime' data-sw-bind='visible: root.showRenderTimes'>
+		                    (child rendered at <span data-sw-bind='text: root.date' ></span>)
+		                </span>
+		                (<a href="#" data-sw-bind='click: parent.removeThis' >Remove Me</a>)
+		            </li>
+		        </ul>
+
+		    </li>
+		</ul>
+		<label><input data-sw-bind='checked: showRenderTimes' type='checkbox' /> Show render times</label>
+		<span data-sw-bind='text: showRenderTimes'>HHH</span>
+		</div>
+
+		<script type="text/javascript" 
+				src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
+		</script>
+		<script src="../../swift.js"></script>
+		<script type="text/javascript">
+
+			var Person = function(name, children) {
+				var self = this;
+			    this.name = name;
+			    this.children = sw.observe(children);
+
+			    // this.childrenLength = sw.observe(self.children().length);
+			    this.addChild = function() {
+			        self.children.push("New child");
+			        // self.childrenLength(self.children().length);
+			    };
+
+			    this.childrenLength = sw.compute(function(){
+			    	return self.children().length;
+			    }, [self.children]);
+
+			    this.removeThis = function(item){
+			    	console.log(item);
+			    	self.children.remove(item);
+			    };
+			}
+			
+			var viewModel = {
+			    people: sw.observe([
+			        new Person("Annabelle", ["Arnie", "Anders", "Apple"]),
+			        new Person("Bertie", ["Boutros-Boutros", "Brianna", "Barbie", "Bee-bop"]),
+			        new Person("Charles", ["Cayenne", "Cleopatra"])
+			    ]),
+
+			    showRenderTimes: sw.observe(true),
+			    
+			    date : function(){
+			    	return new Date().getSeconds();
+			    },
+
+			    delete : function(item) {
+			    	viewModel.people.remove(item);
+			    }
+			};
+			
+			sw.render(viewModel, "body");
+			
+			//some automatic editing
+			setTimeout(function(){
+				for (var i = 0; i < 1; i++){
+					viewModel.people.push( new Person("Mamod", ["Arniexxxx", "Anderxxxs", "Appxxxle"]) );
+				}
+				viewModel.showRenderTimes(false);
+			}, 1000);
+
+			setInterval(function(){
+				viewModel.showRenderTimes(viewModel.showRenderTimes() ? false : true);
+			}, 5000);
+		</script>
+	</body>
+</html>

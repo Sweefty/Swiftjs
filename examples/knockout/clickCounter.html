@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<style type="text/css">
+			body { font-family: arial; font-size: 14px; }
+			.liveExample { padding: 1em; background-color: #EEEEDD; border: 1px solid #CCC; max-width: 655px; }
+			.liveExample input { font-family: Arial; }
+			.liveExample b { font-weight: bold; }
+			.liveExample p { margin-top: 0.9em; margin-bottom: 0.9em; }
+			.liveExample select[multiple] { width: 100%; height: 8em; }
+			.liveExample h2 { margin-top: 0.4em; }
+		</style>
+		<meta charset="utf-8">
+		<title>Click Counter</title>
+	</head>
+	<body>
+		<div class='liveExample'> 
+		    <div>You've clicked <span data-sw-bind='text: numberOfClicks'>&nbsp;</span> times</div>
+		     
+		    <button data-sw-bind='click: registerClick, disable: hasClickedTooManyTimes'>Click me</button>
+		    
+		    <div data-sw-bind='visible: hasClickedTooManyTimes'>
+		        That's too many clicks! Please stop before you wear out your fingers.
+		        <button data-sw-bind='click: resetClicks'>Reset clicks</button>
+		    </div>
+		</div>
+
+		<script type="text/javascript" 
+				src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
+		</script>
+		<script src="../../swift.js"></script>
+		<script type="text/javascript">
+			var ClickCounterViewModel = function() {
+				var self = this;
+			    this.numberOfClicks = sw.observe(0);
+
+			    this.registerClick = function() {
+			        self.numberOfClicks(self.numberOfClicks() + 1);
+			    };
+			 
+			    this.resetClicks = function() {
+			        self.numberOfClicks(0);
+			    };
+
+			    this.hasClickedTooManyTimes = sw.compute(function() {
+			    	console.log('xx');
+			        return self.numberOfClicks() >= 3;
+			    });
+			};
+			 
+			sw.render(new ClickCounterViewModel());
+		</script>
+	</body>
+</html>
