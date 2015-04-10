@@ -592,7 +592,7 @@
         },
 
         optionsAttr : {
-            compile : function(){ 
+            compile : function(){
                 return this.str; 
             }
         }
