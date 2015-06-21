@@ -25,8 +25,7 @@
             <div style="height:30px;"></div>
             <div>
                 <button data-sw-bind="click: getAllTags">Get All Tags</button>
-                <button>Remove Last Tag</button>
-                <button data-sw-bind="click: addNewTag">Add New Tag</button>
+                <button data-sw-bind="click: removeLastTag">Remove Last Tag</button>
             </div>
         </div>
 
@@ -66,9 +65,9 @@
                     alert(self.tags.items());
                 }
 
-                this.addNewTag = function(){
-                    self.tags.items.push("another one");
-                }
+                this.removeLastTag = function(){
+                    self.tags.items.pop();
+                };
             };
              
             sw.render(new TaggingModel());
