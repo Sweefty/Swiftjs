@@ -188,6 +188,8 @@
             return _data;
         };
 
+        observe.type = type;
+        
         observe.set = function(key, val){
             _data[key] = val;
             if (parentNode){
@@ -477,6 +479,27 @@
             }
         },
 
+        'attr' : {
+            init : function () {
+                var self = this;
+                self.after(['attrVal'], function(obj){
+                    obj._parent = self;
+                    self.attr = self.str;
+                    self.node.attr(self.attr, obj.valueAccess());
+                });
+            }
+        },
+
+        'attrVal' : {
+            update : function(){
+                var self = this;
+                if (self._parent){
+                    var parent = self._parent;
+                    parent.node.attr(parent.attr, self.valueAccess());
+                }
+            }
+        },
+
         'value' : {
             init : function () {
                 var self = this;
@@ -645,7 +668,6 @@
                 bindings : bindings,
                 str      : name,
                 //TODO: better way to detect previous loaded bindings
-                //stupid way to watch for loading previous binding
                 after    : function(names, cb){
                     var len = names.length;
                     $(names).each(function(i, name){
@@ -653,12 +675,12 @@
                             var timeout = setInterval(function(){
                                 if (bindings[name].initiated){
                                     clearInterval(timeout);
-                                    if (--len === 0) { cb(); }
+                                    if (--len === 0) { cb(bindings[name]); }
                                 }
                             }, 10);
                         } else { --len; }
                     });
-                    if (len === 0){ cb(); }
+                    if (len === 0){ cb(bindings[name]); }
                 },
                 applyForeach : function(data){
                     sw.render(data || this.data, this.node);
@@ -831,6 +853,10 @@
         self.query = res[1];
         self.path = self.hash.substr(1);
 
+        if (/^!/.test(self.path)){
+            self.path = self.path.substr(1);
+        }
+
         //reset params
         self.params = {};
 
@@ -947,7 +973,7 @@
         if (arguments.length === 1){
             return readCookie(name);
         } else {
-            createCookie(name,value,days);
+            createCookie(name, value, days);
         }
     };
     
