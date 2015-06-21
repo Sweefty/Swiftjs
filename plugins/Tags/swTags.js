@@ -12,12 +12,24 @@
             '',
         '</style>'
     ];
+    
     $(document).find('head').prepend(style.join(''));
 
     sw.registerBinding('tags', {
         init : function(){
             var self = this;
-            var obj = self.valueAccess();
+            var obj;
+            if (typeof self === 'object' && sw.isObserved(self.observe)){
+                obj = {
+                    onTag : function(){},
+                    filter : function(){ return true; },
+                    items : self.observe
+                };
+            } else {
+                obj = self.valueAccess();
+            }
+
+            console.info(self.observe);
 
             var tagsObject = {
                 items : obj.items,
@@ -29,12 +41,14 @@
                 }
             };
 
-            self.textNode = $("<input type='text' data-sw-bind='value: itemToAdd, valueUpdate: keydown' class='_input_tagit' />");
+            self.textNode = $("<input type='text' style='border:none;' data-sw-bind='value: itemToAdd, valueUpdate: keydown' class='_input_tagit' />");
             self.textNode.keypress(function(e) {
                 if(e.which === 13) {
                     var tag = tagsObject.itemToAdd();
+                    //remove leading white space
+                    tag = tag.replace(/^\s+|\s+$/g,'');
                     tagsObject.itemToAdd(""); // Clear text box
-                    if ((tag !== "") && (tagsObject.items.indexOf(tag) < 0)){
+                    if ( (tag !== "") && (tagsObject.items.indexOf(tag) < 0)){
                         // Prevent blanks and duplicates
                         if (obj.filter && typeof obj.filter === 'function'){
                             var ret = obj.filter(tag);
