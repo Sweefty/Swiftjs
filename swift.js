@@ -696,8 +696,18 @@
             bindings[type] = self;
             self.initiated = false;
             node.on("sw." + type, function init (e, currentData){
+                
+                //zepto dosn't provide a name space
+                var namespace = '';
+                if (!e.hasOwnProperty('namespace')){
+                    var ns = e.type.split('.');
+                    namespace = ns[1] || '';
+                } else {
+                    namespace = e.namespace;
+                }
+
                 var val;
-                if (currentData && e.namespace !== 'update'){
+                if (currentData && namespace !== 'update'){
                     val = currentData;
                 } else {
                     if (name === '$data'){
