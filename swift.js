@@ -17,7 +17,6 @@
         var self = this;
         self.routes = {};
         self.params = {};
-        self.models = {};
         self._stash = {};
         self._before_route = [];
         self._before_view  = [];
@@ -825,11 +824,6 @@
         this.constructActions(obj, doc);
     };
 
-    //=========================================================================
-    Swift.prototype.model = function (name, obj){
-        this.models[name] = obj;
-    };
-
     Swift.prototype._fireRouter = function (){
         var self = this;
         var location = window.location.hash;
@@ -965,7 +959,7 @@
         }
         window.location.hash = where;
     };
-    
+
     Swift.prototype.stash = function (name,val) {
         if (val){
             this._stash[name] = val;
