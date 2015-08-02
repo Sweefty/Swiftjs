@@ -170,7 +170,7 @@
             if (parentNode){
                 $(parentNode).each(function(i, obj){
                     var nodes = obj.nodes;
-                    nodes[key].find_with_root(".sw").each(function(i){
+                    nodes[key].find_with_root("[data-sw-bind]").each(function(i){
                         var node = $(this);
                         setTimeout(function(){
                             node.triggerHandler("sw.update", val);
@@ -604,22 +604,47 @@
         _actionMap[name] = action;
     };
     
+    
+    /*
+        parseModels : internal function for parsing data-sw-bind attribute.
+        * passed arguments
+        str    : string to parse
+        node   : jQuery element for the current node being parsed
+        data   : data associated with 
+        parent : parent object if available
+    */
     var RootObject;
-    function _parseActions (str, node, data, parent){
+    function parseModels (str , node, data, parent){
         var bindings = {};
+
+        /*
+            replace anything inside {{ *.* }} with [[00]]
+            [[00]] is a special string nothng more, this because
+            we want to replace it later and tell swift that this string
+            should be compiled.
+        */
         var array = str.match(/\{\{.*\}\}/g);
         str = str.replace(/\{\{.*\}\}/, '[[00]]');
 
+        
+        /*
+            each model is seperated with a comma
+            ex: data-sw-bind = "text: name, func: functionname"
+            split and parse each model seperately
+        */
         var models = str.split(',');
         $(models).each(function(i, model){
             var compile;
+            var html;
+            
             var actions = model.split(":");
             var type    = $.trim(actions[0]);
             var name    = $.trim(actions[1]);
 
             var root    = 'self';
-            type   = name ? type : "func";
-            name = name ? name : type;
+            type        = name ? type : "func";
+            name        = name ? name : type;
+            
             //parse root.name
             var prop = name.split('.');
             if (prop.length === 2){
@@ -630,47 +655,57 @@
             if (name === '[[00]]'){ 
                 name = array.shift();
                 //remove leading {{ and ending }}
-                name = $.trim(name.substring(2, name.length - 2));
+                name    = $.trim(name.substring(2, name.length - 2));
                 compile = name;
             }
 
+            /*
+                in case of foreach, we will remove it's content html
+                to avoid parsing it individually, but first we need
+                to clone it to use later
+            */
             if (type === 'foreach'){
-                var html = node.clone().html();
+                html = node.clone().html();
                 node.html("");
             }
             
             var self = {
                 bindings : bindings,
+                
                 str      : name,
-                //TODO: better way to detect previous loaded bindings
+
+                /* TODO: better way to detect previous loaded bindings */
                 after    : function(names, cb){
+                    var self = this;
                     var len = names.length;
                     $(names).each(function(i, name){
                         if (bindings[name]){
                             var timeout = setInterval(function(){
                                 if (bindings[name].initiated){
                                     clearInterval(timeout);
-                                    if (--len === 0) { cb(bindings[name]); }
+                                    if (--len === 0) { cb.call(self, bindings[name]); }
                                 }
                             }, 10);
                         } else { --len; }
                     });
-                    if (len === 0){ cb(bindings[name]); }
+                    if (len === 0){ cb.call(self, bindings[name]); }
                 },
+                
                 applyForeach : function(data){
                     sw.render(data || this.data, this.node);
-                    //this.node.removeAttr('data-sw-bind');
                 },
+                
                 render : function(data){
-                    this.node.removeAttr('data-sw-bind');
-                    sw.render(data || this.data, this.node);
+                    this.node.off('sw');
+                    sw.renderElement(this.node, data || this.data);
                 },
+
                 root : RootObject
             };
 
             bindings[type] = self;
             self.initiated = false;
-            node.on("sw." + type, function init (e, currentData){
+            node.on('sw.' + type, function init (e, currentData){
                 
                 //zepto dosn't provide a name space
                 var namespace = '';
@@ -713,7 +748,7 @@
                     var all = [];
                     $(val).each(function(i, d){
                         element =  $(html);
-                        sw.constructActions(d, element, data);
+                        constructActions(d, element, data);
                         node.append(element);
                         if (_isObserved) {
                             observe.registerArray(element, type);
@@ -722,6 +757,7 @@
                         }
                     });
                     
+                    /* reset RootObject */
                     RootObject = oldRoot;
                     if (_isObserved) {
                         observe.registerParent(node, type);
@@ -729,9 +765,7 @@
 
                     return all;
                 } else {
-                    element = node;
                     var binding = _actionMap[type];
-
                     if (typeof observe === 'function'){
                         self.valueAccess = function(d){
                             self.val = observe.call(self, d);
@@ -744,11 +778,20 @@
                     }
 
                     self.data = data;
-                    self.node = element;
+                    self.node = node;
                     self.name = name;
                     self.type = type;
 
+                    /* 
+                        if binding exists like default binding
+                        ex: text, checked, class ...
+                        or any external registered bindings
+                    */
                     if (binding){
+                        /*
+                            if compile function registered with binding
+                            don't compile and let it handle the string compilation
+                        */
                         if (compile && binding.compile){
                             self.valueAccess = function(){
                                 return binding.compile.call(self, data);
@@ -768,6 +811,7 @@
                             };
                         }
 
+                        //these should be called once
                         if (!self.initiated){
                             if (binding.init){
                                 binding.init.call(self, data);
@@ -778,50 +822,59 @@
                             }
 
                             if (binding.update){
-                                element.addClass('sw').on("sw.update", init);
+                                node.on("sw.update", init);
                             }
                         }
 
+                        //call on initiation and every time value get updated
                         if (binding.update){
                             binding.update.call(self, data);
                         }
-
                     } else {
-                        console.log("Not Found " + type);
+                        //unknown binding name!!
                     }
 
                     self.initiated = true;
                 }
-            });
-        });
+            }); // node.on
+        }); // each model
     }
 
-    Swift.prototype.constructActions = function(data, tree, parent) {
+    /*
+        this internal functions search passed html tree for 
+        'data-sw-bind' attr and send found elemnt
+        to parseModels for parsing
+    */
+    var constructActions = function(data, tree, parent) {
         var Nodes = [];
         var i = 0;
         while (1) {
             var n = tree.find_with_root('[data-sw-bind]').get(i++);
             if (!n){ break; }
             n = $(n);
-            _parseActions(n.attr('data-sw-bind'), n, data, parent);
+            parseModels(n.attr('data-sw-bind'), n, data, parent);
             Nodes.push(n);
         }
 
+        /* 
+            once all nodes with 'data-sw-bind' parsed we call triggerHandler
+        */
         $(Nodes).each(function(i, n){
             n.triggerHandler('sw');
         });
     };
 
+
     Swift.prototype.renderElement = function(el, obj, parent){
         RootObject = obj;
-        _parseActions(el.attr('data-sw-bind'), el, obj, parent);
+        parseModels(el.attr('data-sw-bind'), el, obj, parent);
         el.triggerHandler('sw');
     };
 
     Swift.prototype.render = function(obj, doc){
         RootObject = obj;
         doc = doc ? $(doc) : $(document);
-        this.constructActions(obj, doc);
+        constructActions(obj, doc);
     };
 
     Swift.prototype._fireRouter = function (){
@@ -847,9 +900,11 @@
             });
         }
         
-        //fire before routes actions
-        //if one of the before_route function returns false
-        //routing will stop and will not continue dispatching
+        /* 
+            fire before routes actions
+            if one of the before_route function returns false
+            routing will stop and will not continue dispatching
+        */
         if (self._before_route.length){
             var ret = true;
             $(self._before_route).each(function(i,f){
@@ -984,7 +1039,7 @@
     };
 
     if (typeof require === 'function'){
-        define(['jQuery'], function(require, exports, $){
+        define(['jQuery'], function($){
             sw = this.exports = new Swift();
         });
     } else {
