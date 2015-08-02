@@ -1,5 +1,5 @@
 (function () {
-    "use strict";
+    'use strict';
     var sw;
     var queryParser = /(?:^|&)([^&=]*)=?([^&]*)/g;
 
@@ -27,7 +27,7 @@
         self.templatesPath = '';
         self.controllersPath = '';
 
-        if (("onhashchange" in window)) {
+        if (('onhashchange' in window)) {
             window.onhashchange = function () {
                 self._fireRouter();
             };
@@ -46,12 +46,12 @@
     * helpers
     ==========================================================================*/
     var isObserved = Swift.prototype.isObserved = function(data){
-        return (typeof data === "function" && 
+        return (typeof data === 'function' && 
                  data.sw_observe === true);
     }
 
     function isDefined (val){
-        return typeof val !== "undefined";
+        return typeof val !== 'undefined';
     }
 
     /*=========================================================================
@@ -115,16 +115,16 @@
         var nodes = [];
         var compute = [];
 
-        var type = (typeof data === "object") ?
-                    ($.isArray(data)) ? "array" : "Object" :
-                    "string";
+        var type = (typeof data === 'object') ?
+                    ($.isArray(data)) ? 'array' : 'Object' :
+                    'string';
 
         var updateObserved = function () {
             $(compute).each(function(i, obj){
                 if (obj.update){
                     obj.update();
                 } else {
-                    obj.node.triggerHandler("sw." + obj.type);
+                    obj.node.triggerHandler('sw.' + obj.type);
                 }
             });
         };
@@ -136,7 +136,7 @@
             }
 
             //set strings & numbers
-            if (type === "string" && isDefined(key)) {
+            if (type === 'string' && isDefined(key)) {
                 if (_data === key) { return; }
                 _data = key;
                 updateObserved();
@@ -170,10 +170,10 @@
             if (parentNode){
                 $(parentNode).each(function(i, obj){
                     var nodes = obj.nodes;
-                    nodes[key].find_with_root("[data-sw-bind]").each(function(i){
+                    nodes[key].find_with_root('[data-sw-bind]').each(function(i){
                         var node = $(this);
                         setTimeout(function(){
-                            node.triggerHandler("sw.update", val);
+                            node.triggerHandler('sw.update', val);
                         }, 1);
                     });
                 });
@@ -315,12 +315,12 @@
             } else {
                 parentNode = [parent_object];
             }
-            namespace = "sw." + ns;
+            namespace = 'sw.' + ns;
         };
 
         observe.registerArray = function(node, ns){
             nodes.push(node);
-            namespace = "sw." + ns;
+            namespace = 'sw.' + ns;
         };
 
         observe.register = function(obj){
@@ -343,7 +343,7 @@
         'submit' : {
             init : function(){
                 var self = this;
-                self.node.on("submit", function(e){
+                self.node.on('submit', function(e){
                     e.preventDefault();
                     self.valueAccess(self.data);
                     return false;
@@ -354,7 +354,7 @@
         'dblclick' : {
             init : function(){
                 var self = this;
-                self.node.on("dblclick", function(){
+                self.node.on('dblclick', function(){
                     self.valueAccess(self.data);
                     return false;
                 });
@@ -364,7 +364,7 @@
         'click' : {
             init : function(){
                 var self = this;
-                self.node.on("click", function(){
+                self.node.on('click', function(){
                     self.valueAccess(self.data);
                     return false;
                 });
@@ -374,8 +374,8 @@
         'check' : {
             init : function(){
                 var self = this;
-                self.node.on("change", function(){
-                    self.val = self.node.prop("checked");
+                self.node.on('change', function(){
+                    self.val = self.node.prop('checked');
                     self.valueAccess(self.data);
                     return false;
                 });
@@ -384,21 +384,21 @@
 
         'enable' : {
             update : function(){
-                this.node.prop('disabled', this.valueAccess(this.data) ? "" : "disabled");
+                this.node.prop('disabled', this.valueAccess(this.data) ? '' : 'disabled');
             }
         },
 
         'disable' : {
             update : function(){
-                this.node.prop('disabled', this.valueAccess(this.data) ? "disabled" : "");
+                this.node.prop('disabled', this.valueAccess(this.data) ? 'disabled' : '');
             }
         },
 
         'caption' : {
             init : function(){
-                this.node.prepend("<option selected>" + 
+                this.node.prepend('<option selected>' + 
                     (this.val ? this.val : this.name) +
-                    "</option>");
+                    '</option>');
             }
         },
 
@@ -424,10 +424,10 @@
 
         'class' : {
             update : function(){
-                var _class = "";
+                var _class = '';
                 this.val = this.valueAccess();
-                if (typeof this.val === "string") {
-                    if (this.val === ""){
+                if (typeof this.val === 'string') {
+                    if (this.val === ''){
                         _class = this._class;
                     } else {
                         this._class = this.val;
@@ -436,7 +436,7 @@
                 } else {
                     _class = this.name;
                 }
-                this.node[this.val ? "addClass" : "removeClass"](_class);
+                this.node[this.val ? 'addClass' : 'removeClass'](_class);
             }
         },
 
@@ -479,7 +479,7 @@
             init : function () {
                 var self = this;
                 if (self.observe){
-                    self.node.on("change.sw", function(){
+                    self.node.on('change.sw', function(){
                         self.valueAccess(self.node.val());
                     });
                 }
@@ -495,7 +495,7 @@
                 var self = this;
                 self.node.on('keydown', function(){
                     setTimeout(function(){
-                        self.node.triggerHandler("change.sw");
+                        self.node.triggerHandler('change.sw');
                    }, 1);
                 });
             }
@@ -505,13 +505,13 @@
             init : function(){
                 var self = this;
                 if (self.observe){
-                    self.node.on("change", function(){
-                        self.valueAccess(self.node.prop("checked"));
+                    self.node.on('change', function(){
+                        self.valueAccess(self.node.prop('checked'));
                     });
                 }
             },
             update : function(){
-                this.node.prop( "checked", this.valueAccess() ? true : false );
+                this.node.prop( 'checked', this.valueAccess() ? true : false );
             }
         },
 
@@ -538,8 +538,8 @@
                 //wait other bindings to load
                 self.after(['selectedOptions', 'optionsAttr'], function(){
                     self.val = self.valueAccess();
-                    node.off("sw.options");
-                    node.attr("data-sw-bind", "foreach: " + self.name);
+                    node.off('sw.options');
+                    node.attr('data-sw-bind', 'foreach: ' + self.name);
                     
                     if (self.bindings.selectedOptions){
                         updateSelected = self.bindings.selectedOptions.observe;
@@ -548,20 +548,20 @@
                     if (self.bindings.optionsAttr){
                         optionsAttr = self.bindings.optionsAttr.valueAccess();
                     } else {
-                        optionsAttr = "text : $data, value: $data";
+                        optionsAttr = 'text : $data, value: $data';
                     }
                     
                     //convert to foreach and trigger
-                    node.attr("data-sw-bind", "foreach: " + self.name);
-                    node.append("<option data-sw-bind='" + optionsAttr + "'></option>");
+                    node.attr('data-sw-bind', 'foreach: ' + self.name);
+                    node.append('<option data-sw-bind="' + optionsAttr + '"></option>');
                     self.applyForeach();
                     
                     if (updateSelected) {
-                        node.on("change.sw", function(){
+                        node.on('change.sw', function(){
                             var data = self.observe ? self.observe.data : self.val;
                             if (!$.isArray){ data = [data]; }
                             var newArr = [];
-                            var selectedNodes = $(this).find(":selected");
+                            var selectedNodes = $(this).find(':selected');
                             $(selectedNodes).each(function(){
                                 var index = $(this).index();
                                 var val = data[index];
@@ -574,7 +574,7 @@
                             var data = self.observe ? self.observe.data : self.val;
                             var items = updateSelected();
                             if (!$.isArray(items)){ items = [items]; }
-                            self.node.find(":selected").prop('selected', false);
+                            self.node.find(':selected').prop('selected', false);
                             $(items).each(function(i, item){
                                 var index = data.indexOf(item);
                                 self.node.find('option').eq(index).prop('selected', true);
@@ -583,7 +583,7 @@
 
                         self.select();
                         updateSelected.register(self);
-                        self.node.on("sw.options", self.select);
+                        self.node.on('sw.options', self.select);
                     }
                 });
             }
@@ -629,7 +629,7 @@
         
         /*
             each model is seperated with a comma
-            ex: data-sw-bind = "text: name, func: functionname"
+            ex: data-sw-bind = 'text: name, func: functionname'
             split and parse each model seperately
         */
         var models = str.split(',');
@@ -637,12 +637,12 @@
             var compile;
             var html;
             
-            var actions = model.split(":");
+            var actions = model.split(':');
             var type    = $.trim(actions[0]);
             var name    = $.trim(actions[1]);
 
             var root    = 'self';
-            type        = name ? type : "func";
+            type        = name ? type : 'func';
             name        = name ? name : type;
             
             //parse root.name
@@ -666,7 +666,7 @@
             */
             if (type === 'foreach'){
                 html = node.clone().html();
-                node.html("");
+                node.html('');
             }
             
             var self = {
@@ -798,7 +798,7 @@
                             };
                         } else if (compile){
                             if (!self.compiled){
-                                var fn = new Function('self', "return " + compile);
+                                var fn = new Function('self', 'return ' + compile);
                                 self.compiled = sw.compute(function compile(){
                                     return fn.call(self, self.data);
                                 });
@@ -822,7 +822,7 @@
                             }
 
                             if (binding.update){
-                                node.on("sw.update", init);
+                                node.on('sw.update', init);
                             }
                         }
 
@@ -943,7 +943,7 @@
     };
 
     Swift.prototype.route = function (name, fn){
-        this.routes["#" + name] = fn;
+        this.routes['#' + name] = fn;
     };
 
     Swift.prototype.before_view = function (name, cb){
