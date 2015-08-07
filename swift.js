@@ -29,14 +29,14 @@
 
         if (('onhashchange' in window)) {
             window.onhashchange = function () {
-                self._fireRouter();
+                self.fireRouter();
             };
         } else {
             var prevHash = window.location.hash;
             window.setInterval(function () {
                 if (window.location.hash !== prevHash) {
                     prevHash = window.location.hash;
-                    self._fireRouter();
+                    self.fireRouter();
                 }
             }, 100);
         }
@@ -877,7 +877,7 @@
         constructActions(obj, doc);
     };
 
-    Swift.prototype._fireRouter = function (){
+    Swift.prototype.fireRouter = function (){
         var self = this;
         var location = window.location.hash;
         self.location = location;
@@ -1035,7 +1035,7 @@
     };
 
     Swift.prototype.run = function () {
-        this._fireRouter();
+        this.fireRouter();
     };
 
     if (typeof require === 'function'){
