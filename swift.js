@@ -23,7 +23,6 @@
         self.path = '';
         self.location = '';
 
-        //paths
         self.templatesPath = '';
         self.controllersPath = '';
 
@@ -45,9 +44,9 @@
     /*=========================================================================
     * helpers
     ==========================================================================*/
-    var isObserved = Swift.prototype.isObserved = function(data){
-        return (typeof data === 'function' && 
-                 data.sw_observe === true);
+    var isObserved = Swift.prototype.isObserved = function(fn){
+        return (typeof fn === 'function' && 
+                 fn.sw_observe === true);
     }
 
     function isDefined (val){
@@ -607,10 +606,11 @@
     
     /*
         parseModels : internal function for parsing data-sw-bind attribute.
-        * passed arguments
+        
+        = passed arguments
         str    : string to parse
         node   : jQuery element for the current node being parsed
-        data   : data associated with 
+        data   : data associated with this node
         parent : parent object if available
     */
     var RootObject;
@@ -652,7 +652,7 @@
                 root = prop[0];
             }
             
-            if (name === '[[00]]'){ 
+            if (name === '[[00]]'){
                 name = array.shift();
                 //remove leading {{ and ending }}
                 name    = $.trim(name.substring(2, name.length - 2));
@@ -1014,6 +1014,7 @@
         }
         window.location.hash = where;
     };
+
 
     Swift.prototype.stash = function (name,val) {
         if (val){
