@@ -459,7 +459,7 @@
                 self.after(['attrVal'], function(obj){
                     obj._parent = self;
                     self.attr = self.str;
-                    self.node.attr(self.attr, obj.valueAccess());
+                    self.node.attr(self.attr, obj.valueAccess(self.data));
                 });
             }
         },
