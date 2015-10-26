@@ -1,3 +1,4 @@
+/* global define */
 (function () {
     'use strict';
     var sw;
@@ -47,7 +48,7 @@
     var isObserved = Swift.prototype.isObserved = function(fn){
         return (typeof fn === 'function' && 
                  fn.sw_observe === true);
-    }
+    };
 
     function isDefined (val){
         return typeof val !== 'undefined';
@@ -59,20 +60,18 @@
     var _calledObservables = false;
     Swift.prototype.compute = function(cb, obsevedValues){
         var registarLater = [];
-        var observed = [];
-        var autoObserver = obsevedValues ? false : true;
         var computed = function (){
             var result;
             if (!obsevedValues){
                 obsevedValues = [];
                 _calledObservables = [];
                 result = cb.apply(this, arguments);
-                $(_calledObservables).each(function(i, o){
-                    obsevedValues.push(o);
+                $(_calledObservables).each(function(){
+                    obsevedValues.push(this);
                 });
 
-                $(registarLater).each(function(i, obj){
-                    computed.register(obj);
+                $(registarLater).each(function(){
+                    computed.register(this);
                 });
                 
                 registarLater = [];
@@ -88,14 +87,14 @@
                 registarLater.push(obj);
             }
 
-            $(obsevedValues).each(function(i, observe){
-                observe.register(obj, ns);
+            $(obsevedValues).each(function(){
+                this.register(obj, ns);
             });
         };
 
         computed.update = function(d){
-            $(obsevedValues).each(function(i, observe){
-                observe.update(d);
+            $(obsevedValues).each(function(){
+                this.update(d);
             });
         };
 
@@ -119,7 +118,8 @@
                     'string';
 
         var updateObserved = function () {
-            $(compute).each(function(i, obj){
+            $(compute).each(function(){
+                var obj = this;
                 if (obj.update){
                     obj.update();
                 } else {
@@ -167,9 +167,9 @@
         observe.set = function(key, val){
             _data[key] = val;
             if (parentNode){
-                $(parentNode).each(function(i, obj){
-                    var nodes = obj.nodes;
-                    nodes[key].find_with_root('[data-sw-bind]').each(function(i){
+                $(parentNode).each(function(){
+                    var nodes = this.nodes;
+                    nodes[key].find_with_root('[data-sw-bind]').each(function(){
                         var node = $(this);
                         setTimeout(function(){
                             node.triggerHandler('sw.update', val);
@@ -185,13 +185,13 @@
             if (data){
                 if (type === 'array'){
                     observe.removeAll();
-                    $(data).each(function(i, item){
-                        observe.push(item);
+                    $(data).each(function(){
+                        observe.push(this);
                     });
                 }
             } else {
-                $(nodes).each(function(i, node){
-                    node.triggerHandler(namespace);
+                $(nodes).each(function(){
+                    this.triggerHandler(namespace);
                 });
                 updateObserved();
             }
@@ -206,17 +206,18 @@
         observe.sort = function(fn){
             _data.sort(fn);
             if (parentNode){
-                $(parentNode).each(function(i, obj){
+                $(parentNode).each(function(){
+                    var obj = this;
                     var nodes = obj.nodes;
-                    $(nodes).each(function(i, n){
-                        n.remove();
+                    $(nodes).each(function(){
+                        this.remove();
                         nodes.shift();
                     });
 
-                    $(_data).each(function(i, d){
-                        var elements = obj.parent.triggerHandler(namespace, d);
-                        $(elements).each(function(i, element){
-                            obj.nodes.push(element);
+                    $(_data).each(function(){
+                        var elements = obj.parent.triggerHandler(namespace, this);
+                        $(elements).each(function(){
+                            obj.nodes.push(this);
                         });
                     });
                 });
@@ -233,10 +234,11 @@
         observe.push = function(data){
             _data.push(data);
             if (parentNode){
-                $(parentNode).each(function(i, obj){
+                $(parentNode).each(function(){
+                    var obj = this;
                     var elements = obj.parent.triggerHandler(namespace, data);
-                    $(elements).each(function(i, element){
-                        obj.nodes.push(element);
+                    $(elements).each(function(){
+                        obj.nodes.push(this);
                     });
                 });
             }
@@ -246,11 +248,12 @@
         observe.unshift = function(data){
             _data.unshift(data);
             if (parentNode){
-                $(parentNode).each(function(i, obj){
+                $(parentNode).each(function(){
+                    var obj = this;
                     var elements = obj.parent.triggerHandler(namespace, data);
-                    $(elements).each(function(i, element){
-                        obj.nodes.unshift(element);
-                        element.prependTo(obj.parent);
+                    $(elements).each(function(){
+                        obj.nodes.unshift(this);
+                        this.prependTo(obj.parent);
                     });
                 });
             }
@@ -259,8 +262,8 @@
         
         observe.remove = function(items){
             if (!$.isArray(items)) { items = [items]; }
-            $(items).each(function(i, item){
-                var index = _data.indexOf(item);
+            $(items).each(function(){
+                var index = _data.indexOf(this);
                 if (index !== -1){
                     observe.splice(index, 1);
                 }
@@ -270,10 +273,10 @@
         observe.splice = function(start, end){
             _data.splice(start, end);
             if (parentNode){
-                $(parentNode).each(function(i, obj){
-                    var nodes = obj.nodes;
-                    for (var i = start; i < start+end; i++){
-                        var el = nodes[i];
+                $(parentNode).each(function(){
+                    var nodes = this.nodes;
+                    for (var index = start; index < start+end; index++){
+                        var el = nodes[index];
                         if (el) {
                             el.remove();
                         }
@@ -303,8 +306,8 @@
                 nodes  : []
             };
 
-            $(nodes).each(function(i, u){
-                parent_object.nodes.push(u);
+            $(nodes).each(function(){
+                parent_object.nodes.push(this);
             });
 
             nodes = [];
@@ -574,8 +577,8 @@
                             var items = updateSelected();
                             if (!$.isArray(items)){ items = [items]; }
                             self.node.find(':selected').prop('selected', false);
-                            $(items).each(function(i, item){
-                                var index = data.indexOf(item);
+                            $(items).each(function(){
+                                var index = data.indexOf(this);
                                 self.node.find('option').eq(index).prop('selected', true);
                             });
                         };
@@ -633,7 +636,8 @@
             split and parse each model seperately
         */
         var models = str.split(',');
-        $(models).each(function(i, model){
+        $(models).each(function(){
+            var model = this;
             var compile;
             var html;
             
@@ -678,7 +682,8 @@
                 after    : function(names, cb){
                     var self = this;
                     var len = names.length;
-                    $(names).each(function(i, name){
+                    $(names).each(function(){
+                        var name = this;
                         if (bindings[name]){
                             var timeout = setInterval(function(){
                                 if (bindings[name].initiated){
@@ -706,6 +711,7 @@
             bindings[type] = self;
             self.initiated = false;
             node.on('sw.' + type, function init (e, currentData){
+                data = data || currentData;
                 
                 //zepto dosn't provide a name space
                 var namespace = '';
@@ -746,9 +752,9 @@
                     RootObject = self.root;
                     if (!$.isArray(val)){ val = [val]; }
                     var all = [];
-                    $(val).each(function(i, d){
+                    $(val).each(function(){
                         element =  $(html);
-                        constructActions(d, element, data);
+                        constructActions(this, element, data);
                         node.append(element);
                         if (_isObserved) {
                             observe.registerArray(element, type);
@@ -798,6 +804,7 @@
                             };
                         } else if (compile){
                             if (!self.compiled){
+                                /*jslint evil: true */
                                 var fn = new Function('self', 'return ' + compile);
                                 self.compiled = sw.compute(function compile(){
                                     return fn.call(self, self.data);
@@ -805,7 +812,7 @@
                                 
                                 self.compiled.register(self);
                             }
-                            self.valueAccess = function(d){
+                            self.valueAccess = function(){
                                 self.val = self.compiled.apply(self, arguments);
                                 return self.val;
                             };
@@ -859,8 +866,8 @@
         /* 
             once all nodes with 'data-sw-bind' parsed we call triggerHandler
         */
-        $(Nodes).each(function(i, n){
-            n.triggerHandler('sw');
+        $(Nodes).each(function(){
+            this.triggerHandler('sw');
         });
     };
 
@@ -895,7 +902,9 @@
 
         //parse params if there are any
         if (self.query && self.query !== ''){
-            self.query.replace(queryParser, function ($0, $1, $2) {
+            self.query.replace(queryParser, function () {
+                var $1 = arguments[1];
+                var $2 = arguments[2];
                 if ($1) { self.params[$1] = $2; }
             });
         }
@@ -907,8 +916,8 @@
         */
         if (self._before_route.length){
             var ret = true;
-            $(self._before_route).each(function(i,f){
-                ret = f.apply(self,[self]);
+            $(self._before_route).each(function(){
+                ret = this.apply(self,[self]);
                 if (ret === false){
                     return;
                 }
@@ -967,7 +976,8 @@
 
             //run before views actions
             if (self._before_view.length){
-                $(self._before_view).each(function(i, v){
+                $(self._before_view).each(function(){
+                    var v = this;
                     if ( v.name === '*' || v.name === url || 
                          $(v.name)[0] === el[0] ){
 
@@ -992,7 +1002,8 @@
                     cache.templates[url] = data;
                     _fireAfterLoad(el);
                 },
-                error : function(jqXHR, textStatus, error){
+                error : function(){
+                    var error = arguments[2];
                     debug(error);
                 },
                 cache: false
@@ -1008,7 +1019,9 @@
         if (params){
             var str = [];
             for (var key in params){
-                str.push(key + '=' + params[key]);
+                if (params.hasOwnProperty(key)) {
+                    str.push(key + '=' + params[key]);
+                }
             }
             where += '?' + str.join('&');
         }
@@ -1040,7 +1053,7 @@
     };
 
     if (typeof require === 'function'){
-        define(['jQuery'], function($){
+        define(['jQuery'], function(){
             sw = this.exports = new Swift();
         });
     } else {
