@@ -350,7 +350,7 @@
                     self.valueAccess(self.data);
                     return false;
                 });
-            },
+            }
         },
 
         'dblclick' : {
@@ -617,7 +617,7 @@
         parent : parent object if available
     */
     var RootObject;
-    function parseModels (str , node, data, parent){
+    function parseModels (str, node, data, parent){
         var bindings = {};
 
         /*
@@ -917,7 +917,7 @@
         if (self._before_route.length){
             var ret = true;
             $(self._before_route).each(function(){
-                ret = this.apply(self,[self]);
+                ret = this.apply(self, [self]);
                 if (ret === false){
                     return;
                 }
@@ -934,7 +934,7 @@
 
             require(self.controllersPath + fn, function(ret){
                 if (typeof ret === 'function'){
-                    ret.apply(self,[self]);
+                    ret.apply(self, [self]);
                 }
             });
         }
@@ -981,7 +981,7 @@
                     if ( v.name === '*' || v.name === url || 
                          $(v.name)[0] === el[0] ){
 
-                        html = v.cb.apply(self,[html]);
+                        html = v.cb.apply(self, [html]);
                     }
                 });
             }
@@ -1029,7 +1029,7 @@
     };
 
 
-    Swift.prototype.stash = function (name,val) {
+    Swift.prototype.stash = function (name, val) {
         if (val){
             this._stash[name] = val;
         } else {
@@ -1039,7 +1039,7 @@
         return val;
     };
     
-    Swift.prototype.cache = function (name,val) {
+    Swift.prototype.cache = function (name, val) {
         if (val){
             cache.data[name] = val;
         } else {
