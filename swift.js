@@ -176,9 +176,8 @@
                         }, 1);
                     });
                 });
-                
-                updateObserved();
             }
+            updateObserved();
         };
 
         observe.update = function(data){
