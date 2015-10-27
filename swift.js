@@ -108,7 +108,7 @@
     ==========================================================================*/
     Swift.prototype.observe = function(data){
         var _data = data;
-        var parentNode;
+        var parentNode = [];
         var namespace;
         var nodes = [];
         var compute = [];
@@ -166,17 +166,15 @@
         
         observe.set = function(key, val){
             _data[key] = val;
-            if (parentNode){
-                $(parentNode).each(function(){
-                    var nodes = this.nodes;
-                    nodes[key].find_with_root('[data-sw-bind]').each(function(){
-                        var node = $(this);
-                        setTimeout(function(){
-                            node.triggerHandler('sw.update', val);
-                        }, 1);
-                    });
+            $(parentNode).each(function(){
+                var nodes = this.nodes;
+                nodes[key].find_with_root('[data-sw-bind]').each(function(){
+                    var node = $(this);
+                    setTimeout(function(){
+                        node.triggerHandler('sw.update', val);
+                    }, 1);
                 });
-            }
+            });
             updateObserved();
         };
 
@@ -204,23 +202,21 @@
 
         observe.sort = function(fn){
             _data.sort(fn);
-            if (parentNode){
-                $(parentNode).each(function(){
-                    var obj = this;
-                    var nodes = obj.nodes;
-                    $(nodes).each(function(){
-                        this.remove();
-                        nodes.shift();
-                    });
+            $(parentNode).each(function(){
+                var obj = this;
+                var nodes = obj.nodes;
+                $(nodes).each(function(){
+                    this.remove();
+                    nodes.shift();
+                });
 
-                    $(_data).each(function(){
-                        var elements = obj.parent.triggerHandler(namespace, this);
-                        $(elements).each(function(){
-                            obj.nodes.push(this);
-                        });
+                $(_data).each(function(){
+                    var elements = obj.parent.triggerHandler(namespace, this);
+                    $(elements).each(function(){
+                        obj.nodes.push(this);
                     });
                 });
-            }
+            });
             updateObserved();
         };
 
@@ -232,30 +228,26 @@
 
         observe.push = function(data){
             _data.push(data);
-            if (parentNode){
-                $(parentNode).each(function(){
-                    var obj = this;
-                    var elements = obj.parent.triggerHandler(namespace, data);
-                    $(elements).each(function(){
-                        obj.nodes.push(this);
-                    });
+            $(parentNode).each(function(){
+                var obj = this;
+                var elements = obj.parent.triggerHandler(namespace, data);
+                $(elements).each(function(){
+                    obj.nodes.push(this);
                 });
-            }
+            });
             updateObserved();
         };
 
         observe.unshift = function(data){
             _data.unshift(data);
-            if (parentNode){
-                $(parentNode).each(function(){
-                    var obj = this;
-                    var elements = obj.parent.triggerHandler(namespace, data);
-                    $(elements).each(function(){
-                        obj.nodes.unshift(this);
-                        this.prependTo(obj.parent);
-                    });
+            $(parentNode).each(function(){
+                var obj = this;
+                var elements = obj.parent.triggerHandler(namespace, data);
+                $(elements).each(function(){
+                    obj.nodes.unshift(this);
+                    this.prependTo(obj.parent);
                 });
-            }
+            });
             updateObserved();
         };
         
@@ -271,18 +263,16 @@
 
         observe.splice = function(start, end){
             _data.splice(start, end);
-            if (parentNode){
-                $(parentNode).each(function(){
-                    var nodes = this.nodes;
-                    for (var index = start; index < start+end; index++){
-                        var el = nodes[index];
-                        if (el) {
-                            el.remove();
-                        }
+            $(parentNode).each(function(){
+                var nodes = this.nodes;
+                for (var index = start; index < start+end; index++){
+                    var el = nodes[index];
+                    if (el) {
+                        el.remove();
                     }
-                    nodes.splice(start, end);
-                });
-            }
+                }
+                nodes.splice(start, end);
+            });
             updateObserved();
         };
 
@@ -308,14 +298,9 @@
             $(nodes).each(function(){
                 parent_object.nodes.push(this);
             });
-
-            nodes = [];
             
-            if (parentNode){
-                parentNode.push(parent_object);
-            } else {
-                parentNode = [parent_object];
-            }
+            nodes = [];
+            parentNode.push(parent_object);
             namespace = 'sw.' + ns;
         };
 
