@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Grid View</title>
+    
+    <script type="text/javascript" 
+                            src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
+            </script>
+    <script src="../swift.js"></script>
+    <style type='text/css'>
+        body {
+            font-family: Helvetica Neue, Arial, sans-serif;
+            font-size: 14px;
+            color: #444;
+        }
+
+        table {
+            border: 2px solid #42b983;
+            border-radius: 3px;
+            background-color: #fff;
+        }
+
+        th {
+            background-color: #42b983;
+            color: rgba(255,255,255,0.66);
+            cursor: pointer;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -user-select: none;
+        }
+
+        td {
+            background-color: #f9f9f9;
+        }
+
+        th, td {
+            min-width: 120px;
+            padding: 10px 20px;
+        }
+
+        th.active {
+            color: #fff;
+        }
+
+        th.active .arrow {
+            opacity: 1;
+        }
+
+        .arrow {
+            display: inline-block;
+            vertical-align: middle;
+            width: 0;
+            height: 0;
+            margin-left: 5px;
+            opacity: 0.66;
+        }
+
+        .arrow.asc {
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-bottom: 4px solid #fff;
+        }
+
+        .arrow.dsc {
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid #fff;
+        }
+
+        span.upper {
+            text-transform: uppercase;
+        }
+
+        #search {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- component template -->
+    <form id="search">
+            Search <input name="query" data-sw-bind="value: filterText, valueUpdate: keydown">
+        </form>
+
+    <table>
+        <thead>
+            <tr data-sw-bind="foreach: columns">
+                <th data-sw-bind="click: root.sortBy, class: {{ this.root.active(self) ? 'active' : '' }}">
+                    <span class="upper" data-sw-bind="text: $data"></span>
+                    <span class="arrow" data-sw-bind="toggleClass: {{ this.root.sortOrders(self) }}"></span>
+                </th>
+            </tr>
+        </thead>
+        <tbody data-sw-bind="foreach: gridData">
+            <tr>
+                <td data-sw-bind="text: name"></td>
+                <td data-sw-bind="text: power"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        var records = [
+            { name: 'Chuck Norris', power: Infinity },
+            { name: 'Bruce Lee', power: 9000 },
+            { name: 'Jackie Chan', power: 7000 },
+            { name: 'Jet Li', power: 8000 }
+        ];
+
+        var viewModel = function(){
+            var self = this;
+            
+            this.columns = ['name','power'];
+            this.gridData = sw.observe([]);
+            
+            //which key to sort against (name/power)
+            this.sortKey   = sw.observe('');
+
+            this.sortOrders = sw.observe({
+                name : 'asc',
+                power : 'asc'
+            });
+
+            //filter function
+            this.filterText = sw.compute(function(text){
+                text = text || '';
+                self.gridData.removeAll();
+                for (var i = 0; i < records.length; i++){
+                    var r = records[i];
+                    if ( r.name.toLowerCase().indexOf(text) > -1 || 
+                         r.power.toString().indexOf(text) > -1){
+                        
+                        self.gridData.push(r);
+                    }
+                }
+            });
+
+            this.sortBy = function(key){
+                //set sort key (name / power)
+                self.sortKey(key);
+                
+                var currentSort = self.sortOrders(key);
+                
+                //flip sorting order
+                self.sortOrders(key, currentSort === 'asc' ? 'dsc' : 'asc');
+
+                //do the sorting
+                self.gridData.sort(function(a, b){
+                    return currentSort === 'dsc' ? a[key] < b[key] ? -1 : 1
+                                                 : a[key] < b[key] ? 1 : -1
+                });
+            };
+
+            this.active = function(item){
+                return item == self.sortKey();
+            };
+        };
+
+        sw.render(new viewModel());
+    </script>
+</body>
+</html>
