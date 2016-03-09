@@ -381,7 +381,7 @@
 
 		'caption' : {
 			init : function(){
-				this.node.prepend('<option selected>' + 
+				this.node.prepend('<option selected>' +
 					(this.val ? this.val : this.name) +
 					'</option>');
 			}
@@ -431,7 +431,7 @@
 				if (this._oldClass){
 					this.node.removeClass(this._oldClass);
 				}
-				
+
 				if (this.val){
 					this.node.addClass(this.val);
 					this._oldClass = this.val;
@@ -502,14 +502,14 @@
 
 		'visible' : {
 			update : function(){
-				if ( this.valueAccess() ){ this.node.show(); } 
+				if ( this.valueAccess() ){ this.node.show(); }
 				else { this.node.hide(); }
 			}
 		},
 
 		'invisible' : {
 			update : function(){
-				if ( this.valueAccess() ){ this.node.hide(); } 
+				if ( this.valueAccess() ){ this.node.hide(); }
 				else { this.node.show(); }
 			}
 		},
@@ -577,7 +577,7 @@
 
 		optionsAttr : {
 			compile : function(){
-				return this.str; 
+				return this.str;
 			}
 		}
 	};
@@ -725,10 +725,10 @@
 				var element;
 				if (type === 'foreach'){
 					var oldRoot = RootObject;
-					RootObject = self.root;
 					if (!$.isArray(val)){ val = [val]; }
 					var all = [];
 					$(val).each(function(){
+						RootObject = self.root;
 						element =  $(html);
 						constructActions(this, element, data);
 						node.append(element);
@@ -781,7 +781,7 @@
 								self.compiled = sw.compute(function compile(){
 									return fn.call(self, self.data);
 								});
-								
+
 								self.compiled.register(self);
 							}
 							self.valueAccess = function(){
@@ -819,7 +819,7 @@
 		}); // each model
 	}
 
-	// this internal functions search passed html tree for 
+	// this internal functions search passed html tree for
 	// 'data-sw-bind' attr and send found elemnt
 	// to parseModels for parsing
 	var constructActions = function(data, tree, parent) {
@@ -895,7 +895,7 @@
 		var fn = self.routes[self.hash] || self._not_found;
 		if (fn && typeof fn === 'function'){
 			fn.apply(self,[self]);
-		} else if (fn && typeof fn === 'string' && require && 
+		} else if (fn && typeof fn === 'string' && require &&
 					typeof require === 'function'){
 
 			require(self.controllersPath + fn, function(ret){
@@ -948,7 +948,7 @@
 			if (self._before_view.length){
 				$(self._before_view).each(function(){
 					var v = this;
-					if ( v.name === '*' || v.name === url || 
+					if ( v.name === '*' || v.name === url ||
 						 $(v.name)[0] === el[0] ){
 
 						html = v.cb.apply(self, [html]);
