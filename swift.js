@@ -717,16 +717,20 @@
 
 				var observe = val;
 				var _isObserved = isObserved(observe);
+
+				// if passed value is observable object then
+				// it's real value is stored in data property
 				if (_isObserved){
 					self.observe = observe;
 					val = val.data;
 				}
 
-				var element;
+
 				if (type === 'foreach'){
+					var element;
 					var oldRoot = RootObject;
 					if (!$.isArray(val)){ val = [val]; }
-					var all = [];
+					var foreachElements = [];
 					$(val).each(function(){
 						RootObject = self.root;
 						element =  $(html);
@@ -735,7 +739,7 @@
 						if (_isObserved) {
 							observe.registerArray(element, type);
 						} else {
-							all.push(element);
+							foreachElements.push(element);
 						}
 					});
 
@@ -745,7 +749,7 @@
 						observe.registerParent(node, type);
 					}
 
-					return all;
+					return foreachElements;
 				} else {
 					var binding = _actionMap[type];
 					if (typeof observe === 'function'){
@@ -790,7 +794,7 @@
 							};
 						}
 
-						//these should be called once
+						// these should be called once
 						if (!self.initiated){
 							if (binding.init){
 								binding.init.call(self, data);
@@ -810,7 +814,7 @@
 							binding.update.call(self, data);
 						}
 					} else {
-						//unknown binding name!!
+						// unknown binding name!!
 					}
 
 					self.initiated = true;
