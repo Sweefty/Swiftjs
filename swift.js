@@ -133,7 +133,7 @@
 				_calledObservables.push(observe);
 			}
 
-			//set strings & numbers
+			// set strings & numbers
 			if (type === 'string' && isDefined(key)) {
 				if (_data === key) { return; }
 				_data = key;
@@ -521,7 +521,7 @@
 				var updateSelected;
 				var optionsAttr;
 
-				//wait other bindings to load
+				// wait other bindings to load
 				self.after(['selectedOptions', 'optionsAttr'], function(){
 					self.val = self.valueAccess();
 					node.off('sw.options');
@@ -537,7 +537,7 @@
 						optionsAttr = 'text : $data, value: $data';
 					}
 
-					//convert to foreach and trigger
+					// convert to foreach and trigger
 					node.attr('data-sw-bind', 'foreach: ' + self.name);
 					node.append('<option data-sw-bind="' + optionsAttr + '"></option>');
 					self.applyForeach();
@@ -627,7 +627,7 @@
 			type        = name ? type : 'func';
 			name        = name ? name : type;
 
-			//parse root.name
+			// parse root.name
 			var prop = name.split('.');
 			if (prop.length === 2){
 				name = prop[1];
@@ -636,7 +636,7 @@
 
 			if (name === '[[00]]'){
 				name = array.shift();
-				//remove leading {{ and ending }}
+				// remove leading {{ and ending }}
 				name    = $.trim(name.substring(2, name.length - 2));
 				compile = name;
 			}
@@ -689,7 +689,7 @@
 			node.on('sw.' + type, function init (e, currentData){
 				data = data || currentData;
 
-				//zepto dosn't provide a name space
+				// zepto dosn't provide a name space
 				var namespace = '';
 				if (!e.hasOwnProperty('namespace')){
 					var ns = e.type.split('.');
@@ -734,7 +734,7 @@
 					$(val).each(function(){
 						RootObject = self.root;
 						element =  $(html);
-						constructActions(this, element, data);
+						_renderView(this, element, data);
 						node.append(element);
 						if (_isObserved) {
 							observe.registerArray(element, type);
@@ -809,7 +809,7 @@
 							}
 						}
 
-						//call on initiation and every time value get updated
+						// call on initiation and every time value get updated
 						if (binding.update){
 							binding.update.call(self, data);
 						}
@@ -826,34 +826,34 @@
 	// this internal functions search passed html tree for
 	// 'data-sw-bind' attr and send found elemnt
 	// to parseModels for parsing
-	var constructActions = function(data, tree, parent) {
+	var _renderView = function(data, tree, parent) {
 		var Nodes = [];
 		var i = 0;
 		while (1) {
-			var n = tree.find_with_root('[data-sw-bind]').get(i++);
-			if (!n){ break; }
-			n = $(n);
-			parseModels(n.attr('data-sw-bind'), n, data, parent);
-			Nodes.push(n);
+			var node = tree.find_with_root('[data-sw-bind]').get(i++);
+			if (!node){ break; }
+			node = $(node);
+			parseModels(node.attr('data-sw-bind'), node, data, parent);
+			Nodes.push(node);
 		}
 
-		//once all nodes with 'data-sw-bind' parsed we call triggerHandler
+		// once all nodes with 'data-sw-bind' parsed we call triggerHandler
 		$(Nodes).each(function(){
 			this.triggerHandler('sw');
 		});
 	};
 
 
-	Swift.prototype.renderElement = function(el, obj, parent){
-		RootObject = obj;
-		parseModels(el.attr('data-sw-bind'), el, obj, parent);
-		el.triggerHandler('sw');
+	Swift.prototype.renderElement = function(node, objClass, parent){
+		RootObject = objClass;
+		parseModels(node.attr('data-sw-bind'), node, objClass, parent);
+		node.triggerHandler('sw');
 	};
 
-	Swift.prototype.render = function(obj, doc){
-		RootObject = obj;
-		doc = doc ? $(doc) : $(document);
-		constructActions(obj, doc);
+	Swift.prototype.render = function(objClass, node){
+		RootObject = objClass;
+		node = node ? $(node) : $(document);
+		_renderView(objClass, node);
 	};
 
 	Swift.prototype.fireRouter = function (){
@@ -869,10 +869,10 @@
 			self.path = self.path.substr(1);
 		}
 
-		//reset params
+		// reset params
 		self.params = {};
 
-		//parse params if there are any
+		// parse params if there are any
 		if (self.query && self.query !== ''){
 			self.query.replace(queryParser, function () {
 				var $1 = arguments[1];
@@ -881,9 +881,9 @@
 			});
 		}
 
-		//fire before routes actions
-		//if one of the before_route function returns false
-		//routing will stop and will not continue dispatching
+		// fire before routes actions
+		// if one of the before_route function returns false
+		// routing will stop and will not continue dispatching
 		if (self._before_route.length){
 			var ret = true;
 			$(self._before_route).each(function(){
@@ -895,7 +895,7 @@
 			if (ret === false){ return; }
 		}
 
-		//fire router callback
+		// fire router callback
 		var fn = self.routes[self.hash] || self._not_found;
 		if (fn && typeof fn === 'function'){
 			fn.apply(self,[self]);
@@ -948,7 +948,7 @@
 		var _fireAfterLoad = function(el){
 			var html = cache.templates[url];
 
-			//run before views actions
+			// run before views actions
 			if (self._before_view.length){
 				$(self._before_view).each(function(){
 					var v = this;
