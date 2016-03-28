@@ -161,8 +161,6 @@
 			return _data;
 		};
 
-		observe.type = type;
-
 		observe.set = function(key, val){
 			_data[key] = val;
 			$(parentNode).each(function(){
@@ -593,21 +591,23 @@
 	};
 
 
-	// parseModels : internal function for parsing data-sw-bind attribute.
+	// _dataAttributeParser : internal function for parsing data-sw-bind attribute.
 	// = passed arguments
-	//   str    : string to parse
 	//   node   : jQuery element for the current node being parsed
 	//   data   : data associated with this node
 	//   parent : parent object if available
 	var RootObject;
-	function parseModels (str, node, data, parent){
+	function _dataAttributeParser (node, objClass, parent){
+		var str = node.attr('data-sw-bind'); // string to parse
+		if (!str) return; // nothing to do
+
 		var bindings = {};
 
 		// replace anything inside {{ *.* }} with [[00]]
 		// [[00]] is a special string nothng more, this because
 		// we want to replace it later and tell swift that this string
 		// should be compiled.
-		var array = str.match(/\{\{.*\}\}/g);
+		var _toBeCompiled = str.match(/\{\{.*\}\}/g);
 		str = str.replace(/\{\{.*\}\}/, '[[00]]');
 
 		// each model is seperated with a comma
@@ -623,11 +623,13 @@
 			var type    = $.trim(actions[0]);
 			var name    = $.trim(actions[1]);
 
-			var root    = 'self';
 			type        = name ? type : 'func';
 			name        = name ? name : type;
 
 			// parse root.name
+			// possible values to root is
+			// self, parent, root
+			var root = 'self'; //root is self by default
 			var prop = name.split('.');
 			if (prop.length === 2){
 				name = prop[1];
@@ -635,7 +637,7 @@
 			}
 
 			if (name === '[[00]]'){
-				name = array.shift();
+				name = _toBeCompiled.shift();
 				// remove leading {{ and ending }}
 				name    = $.trim(name.substring(2, name.length - 2));
 				compile = name;
@@ -687,7 +689,7 @@
 			bindings[type] = self;
 			self.initiated = false;
 			node.on('sw.' + type, function init (e, currentData){
-				data = data || currentData;
+				var data = objClass || currentData;
 
 				// zepto dosn't provide a name space
 				var namespace = '';
@@ -825,15 +827,15 @@
 
 	// this internal functions search passed html tree for
 	// 'data-sw-bind' attr and send found elemnt
-	// to parseModels for parsing
-	var _renderView = function(data, tree, parent) {
+	// to _dataAttributeParser for parsing
+	var _renderView = function(objClass, tree, parent) {
 		var Nodes = [];
 		var i = 0;
 		while (1) {
 			var node = tree.find_with_root('[data-sw-bind]').get(i++);
 			if (!node){ break; }
 			node = $(node);
-			parseModels(node.attr('data-sw-bind'), node, data, parent);
+			_dataAttributeParser(node, objClass, parent);
 			Nodes.push(node);
 		}
 
@@ -846,7 +848,7 @@
 
 	Swift.prototype.renderElement = function(node, objClass, parent){
 		RootObject = objClass;
-		parseModels(node.attr('data-sw-bind'), node, objClass, parent);
+		_dataAttributeParser(node, objClass, parent);
 		node.triggerHandler('sw');
 	};
 
