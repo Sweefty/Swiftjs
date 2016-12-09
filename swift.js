@@ -9,7 +9,8 @@
 	};
 
 	function debug (){
-		console.log(arguments);
+		console.info('DEBUG');
+		console.info(arguments);
 	}
 
 	var cache = { data : {}, templates : {} };
@@ -972,18 +973,56 @@
 		if (cache.templates[url]){
 			_fireAfterLoad(el);
 		} else {
-			$.ajax({
-				url: self.templatesPath + url,
-				success: function(data){
+			var iframe_fallback = function(){
+				self.useIfarme = true;
+				debug('using iframe');
+				var loaded = false;
+				var doc = window.document;
+				var node = doc.createElement('iframe');
+				var head = doc.getElementsByTagName('head')[0];
+
+				node.onload = node.onerror = node.onreadystatechange = function () {
+					if ((node.readyState && node.readyState !== "complete" &&
+					 node.readyState !== "loaded") || loaded ){
+						return false;
+					}
+
+					var data = $(node).contents().find('body').html();
 					cache.templates[url] = data;
 					_fireAfterLoad(el);
-				},
-				error : function(){
-					var error = arguments[2];
-					debug(error);
-				},
-				cache: false
-			});
+					node.onload = node.onreadystatechange = null;
+					$(node).remove();
+					loaded = true;
+					return true;
+				};
+
+				node.async = false;
+
+				node.src = self.templatesPath + url;
+				head.insertBefore(node, head.lastChild);
+			};
+
+			if (self.useIfarme){
+				iframe_fallback();
+			} else {
+				$.ajax({
+					url: self.templatesPath + url,
+					success: function(data){
+						if (typeof data !== 'string'){
+							iframe_fallback();
+							return;
+						}
+
+						cache.templates[url] = data;
+						_fireAfterLoad(el);
+					},
+
+					error : function(){
+						iframe_fallback();
+					},
+					cache: false
+				});
+			}
 		}
 	};
 
@@ -1034,9 +1073,13 @@
 
 
 	if (typeof require === 'function'){
-		define(['jQuery'], function(){
-			sw = this.exports = new Swift();
-		});
+		if (typeof define === 'function'){
+			define(['jQuery'], function(){
+				sw = this.exports = new Swift();
+			});
+		} else {
+			module.exports = new Swift();
+		}
 	} else {
 		sw = window.sw = window.Swift = new Swift();
 	}
