@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>QUnit Test Suite</title>
+<link rel="stylesheet" href="http://code.jquery.com/qunit/qunit-1.14.0.css">
+<script type="text/javascript"
+				src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+<script src="http://code.jquery.com/qunit/qunit-1.14.0.js"></script>
+
+</head>
+<body>
+<h1 id="qunit-header">Scriptr Test Suite</h1>
+<h2 id="qunit-banner"></h2>
+<div id="qunit-testrunner-toolbar"></div>
+<h2 id="qunit-userAgent"></h2>
+<ol id="qunit-tests"></ol>
+
+
+<div>
+
+	<div class="group-1">
+		<div class="view1">
+			<div data-sw-bind="text: myText"></div>
+		</div>
+
+		<div class="view2">
+			<div data-sw-bind="text: myText"></div>
+		</div>
+	</div>
+
+	<div class="view3">
+		<div class="first" data-sw-bind="text: test"></div>
+		<div class="second" data-sw-bind="text: test"></div>
+	</div>
+
+
+	<div class="view4">
+		<ul data-sw-bind="foreach: $data">
+			<li><span data-sw-bind="text: text"></span><a data-sw-bind="click: click">click</a></li>
+		</ul>
+	</div>
+
+	<div class="view5">
+		<ul data-sw-bind="foreach: data">
+			<li><span data-sw-bind="text: text"></span><a data-sw-bind="click: root.click">click</a></li>
+		</ul>
+	</div>
+
+
+	<div class="view6">
+		<div class="first" data-sw-bind="text: test, func: render">yy</div>
+	</div>
+
+	<div class="view7">
+		<div class="first" data-sw-bind="testBinding: test, testBinding2: {{ hello there }}">yy</div>
+		<!-- <div class="first" data-sw-bind="">yy</div> -->
+	</div>
+
+	<div class="view8">
+		<ul data-sw-bind="foreach: list">
+			<li data-sw-bind="text: {{ self.name }}"></li>
+			<li data-sw-bind="text: {{ self.name === 'Hi' ? self.name2 : self.name }}"></li>
+			<li data-sw-bind="text: {{ self.name === 'Hi' ? this.root.name(self) : self.name }}"></li>
+		</ul>
+	</div>
+
+</div>
+
+<script type="text/javascript" src="../swift.js"></script>
+<script type="text/javascript" src="local-tests.js"></script>
+</body>
+</html>
