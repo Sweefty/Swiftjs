@@ -9,8 +9,10 @@
 	};
 
 	function debug (){
-		console.info('DEBUG');
-		console.info(arguments);
+		if (sw.debug) {
+			console.info('DEBUG');
+			console.info(arguments);
+		}
 	}
 
 	var cache = { data : {}, templates : {} };
@@ -179,7 +181,7 @@
 		observe.update = function(data){
 			if (data){
 				if (type === 'array'){
-					observe.removeAll();
+					observe.removeAll(true);
 					$(data).each(function(){
 						observe.push(this);
 					});
@@ -192,9 +194,9 @@
 			}
 		};
 
-		observe.removeAll = function(){
+		observe.removeAll = function(noupdate){
 			$(_data).each(function(){
-				observe.shift();
+				observe.shift(noupdate);
 			});
 		};
 
@@ -259,7 +261,7 @@
 			});
 		};
 
-		observe.splice = function(start, end){
+		observe.splice = function(start, end, noupdate){
 			_data.splice(start, end);
 			$(parentNode).each(function(){
 				var nodes = this.nodes;
@@ -271,11 +273,11 @@
 				}
 				nodes.splice(start, end);
 			});
-			updateObserved();
+			if (!noupdate) updateObserved();
 		};
 
-		observe.shift = function(){
-			observe.splice(0, 1);
+		observe.shift = function(noupdate){
+			observe.splice(0, 1, noupdate);
 		};
 
 		observe.pop = function(){
@@ -298,7 +300,8 @@
 			});
 
 			nodes = [];
-			parentNode.push(parent_object);
+			// parentNode.push(parent_object);
+			parentNode[0] = parent_object;
 			namespace = 'sw.' + ns;
 		};
 

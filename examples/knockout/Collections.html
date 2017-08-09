@@ -22,33 +22,33 @@
 	<div class="liveExample">
 		<h2>People</h2>
 		<ul data-sw-bind="foreach: people">
-		    <li>
-		        <div>
-		            <span data-sw-bind="text: name"> </span> has <span data-sw-bind='text: childrenLength'>&nbsp;</span> children:
-		            <a href='#' data-sw-bind='click: addChild '>Add child</a>
-		            <a href='#' data-sw-bind='click: parent.delete '>Delete</a>
-		            <span class='renderTime' data-sw-bind='visible: root.showRenderTimes'>
-		                (person rendered at <span data-sw-bind='text: root.date' > </span>)
-		            </span>
-		        </div>
+			<li>
+				<div>
+					<span data-sw-bind="text: name"> </span> has <span data-sw-bind='text: childrenLength'>&nbsp;</span> children:
+					<a href='#' data-sw-bind='click: addChild '>Add child</a>
+					<a href='#' data-sw-bind='click: parent.delete '>Delete</a>
+					<span class='renderTime' data-sw-bind='visible: root.showRenderTimes'>
+						(person rendered at <span data-sw-bind='text: root.date' > </span>)
+					</span>
+				</div>
 
-		        <ul data-sw-bind="foreach: children">
-		            <li>
-		                <span data-sw-bind="text: $data"></span>
-		                <span class='renderTime' data-sw-bind='visible: root.showRenderTimes'>
-		                    (child rendered at <span data-sw-bind='text: root.date' ></span>)
-		                </span>
-		                (<a href="#" data-sw-bind='click: parent.removeThis' >Remove Me</a>)
-		            </li>
-		        </ul>
+				<ul data-sw-bind="foreach: children">
+					<li>
+						<span data-sw-bind="text: $data"></span>
+						<span class='renderTime' data-sw-bind='visible: root.showRenderTimes'>
+							(child rendered at <span data-sw-bind='text: root.date' ></span>)
+						</span>
+						(<a href="#" data-sw-bind='click: parent.removeThis' >Remove Me</a>)
+					</li>
+				</ul>
 
-		    </li>
+			</li>
 		</ul>
 		<label><input data-sw-bind='checked: showRenderTimes' type='checkbox' /> Show render times</label>
-		<span data-sw-bind='text: showRenderTimes'>HHH</span>
+		<span data-sw-bind='text: showRenderTimes'></span>
 		</div>
 
-		<script type="text/javascript" 
+		<script type="text/javascript"
 				src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
 		</script>
 		<script src="../../swift.js"></script>
@@ -56,56 +56,53 @@
 
 			var Person = function(name, children) {
 				var self = this;
-			    this.name = name;
-			    this.children = sw.observe(children);
+				this.name = name;
+				this.children = sw.observe(children);
 
-			    // this.childrenLength = sw.observe(self.children().length);
-			    this.addChild = function() {
-			        self.children.push("New child");
-			        // self.childrenLength(self.children().length);
-			    };
+				this.addChild = function() {
+					self.children.push("New child");
+				};
 
-			    this.childrenLength = sw.compute(function(){
-			    	return self.children().length;
-			    }, [self.children]);
+				this.childrenLength = sw.compute(function(){
+					return self.children().length;
+				}, [self.children]);
 
-			    this.removeThis = function(item){
-			    	console.log(item);
-			    	self.children.remove(item);
-			    };
+				this.removeThis = function(item){
+					self.children.remove(item);
+				};
 			}
-			
+
 			var viewModel = {
-			    people: sw.observe([
-			        new Person("Annabelle", ["Arnie", "Anders", "Apple"]),
-			        new Person("Bertie", ["Boutros-Boutros", "Brianna", "Barbie", "Bee-bop"]),
-			        new Person("Charles", ["Cayenne", "Cleopatra"])
-			    ]),
+				people: sw.observe([
+					new Person("Annabelle", ["Arnie", "Anders", "Apple"]),
+					new Person("Bertie", ["Boutros-Boutros", "Brianna", "Barbie", "Bee-bop"]),
+					new Person("Charles", ["Cayenne", "Cleopatra"])
+				]),
 
-			    showRenderTimes: sw.observe(true),
-			    
-			    date : function(){
-			    	return new Date().getSeconds();
-			    },
+				showRenderTimes: sw.observe(true),
 
-			    delete : function(item) {
-			    	viewModel.people.remove(item);
-			    }
-			};
-			
-			sw.render(viewModel, "body");
-			
-			//some automatic editing
-			setTimeout(function(){
-				for (var i = 0; i < 1; i++){
-					viewModel.people.push( new Person("Mamod", ["Arniexxxx", "Anderxxxs", "Appxxxle"]) );
+				date : function(){
+					return new Date().getSeconds();
+				},
+
+				delete : function(item) {
+					viewModel.people.remove(item);
 				}
-				viewModel.showRenderTimes(false);
-			}, 1000);
+			};
 
-			setInterval(function(){
-				viewModel.showRenderTimes(viewModel.showRenderTimes() ? false : true);
-			}, 5000);
+			sw.render(viewModel, "body");
+
+			//some automatic editing
+			// setTimeout(function(){
+			// 	for (var i = 0; i < 1; i++){
+			// 		viewModel.people.push( new Person("Mamod", ["Arniexxxx", "Anderxxxs", "Appxxxle"]) );
+			// 	}
+			// 	viewModel.showRenderTimes(false);
+			// }, 1000);
+
+			// setInterval(function(){
+			// 	viewModel.showRenderTimes(viewModel.showRenderTimes() ? false : true);
+			// }, 5000);
 		</script>
 	</body>
 </html>

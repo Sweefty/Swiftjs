@@ -14,40 +14,40 @@
 		<title>Click Counter</title>
 	</head>
 	<body>
-		<div class='liveExample'> 
-		    <div>You've clicked <span data-sw-bind='text: numberOfClicks'>&nbsp;</span> times</div>
-		     
-		    <button data-sw-bind='click: registerClick, disable: hasClickedTooManyTimes'>Click me</button>
-		    
-		    <div data-sw-bind='visible: hasClickedTooManyTimes'>
-		        That's too many clicks! Please stop before you wear out your fingers.
-		        <button data-sw-bind='click: resetClicks'>Reset clicks</button>
-		    </div>
+		<div class='liveExample'>
+			<div>You've clicked <span data-sw-bind='text: numberOfClicks'>&nbsp;</span> times</div>
+
+			<button data-sw-bind='click: registerClick, disable: hasClickedTooManyTimes'>Click me</button>
+
+			<div data-sw-bind='visible: hasClickedTooManyTimes'>
+				That's too many clicks! Please stop before you wear out your fingers.
+				<button data-sw-bind='click: resetClicks'>Reset clicks</button>
+			</div>
 		</div>
 
-		<script type="text/javascript" 
+		<script type="text/javascript"
 				src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
 		</script>
 		<script src="../../swift.js"></script>
+
 		<script type="text/javascript">
 			var ClickCounterViewModel = function() {
 				var self = this;
-			    this.numberOfClicks = sw.observe(0);
+				this.numberOfClicks = sw.observe(0);
 
-			    this.registerClick = function() {
-			        self.numberOfClicks(self.numberOfClicks() + 1);
-			    };
-			 
-			    this.resetClicks = function() {
-			        self.numberOfClicks(0);
-			    };
+				this.registerClick = function() {
+					self.numberOfClicks(self.numberOfClicks() + 1);
+				};
 
-			    this.hasClickedTooManyTimes = sw.compute(function() {
-			    	console.log('xx');
-			        return self.numberOfClicks() >= 3;
-			    });
+				this.resetClicks = function() {
+					self.numberOfClicks(0);
+				};
+
+				this.hasClickedTooManyTimes = sw.compute(function() {
+					return self.numberOfClicks() >= 3;
+				});
 			};
-			 
+
 			sw.render(new ClickCounterViewModel());
 		</script>
 	</body>
