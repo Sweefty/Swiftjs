@@ -144,6 +144,14 @@
 				return;
 			}
 
+			if (type === 'Object' && isDefined(key)) {
+				var old = JSON.stringify(_data);
+				if (old === JSON.stringify(key)) { return; }
+				_data = key;
+				updateObserved();
+				return;
+			}
+
 			if (isDefined(key)){
 				if (!isDefined(val)){
 					if (type === 'array' && typeof key !== 'number'){
@@ -409,6 +417,12 @@
 			}
 		},
 
+		'compute' : {
+			update : function(){
+				this.valueAccess(this.data);
+			}
+		},
+
 		'class' : {
 			update : function(){
 				var _class = '';
@@ -612,7 +626,7 @@
 		// we want to replace it later and tell swift that this string
 		// should be compiled.
 		var _toBeCompiled = str.match(/\{\{.*\}\}/g);
-		str = str.replace(/\{\{.*\}\}/, '[[00]]');
+		str = str.replace(/\{\{.*\}\}/g, '[[00]]');
 
 		// each model is seperated with a comma
 		// ex: data-sw-bind = 'text: name, func: functionname'
