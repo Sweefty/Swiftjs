@@ -1,182 +1,181 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <style type="text/css">
-            body { font-family: arial; font-size: 14px; }
-            .liveExample { padding: 1em; background-color: #EEEEDD; border: 1px solid #CCC; max-width: 655px; }
-            .liveExample input { font-family: Arial; }
-            .liveExample b { font-weight: bold; }
-            .liveExample p { margin-top: 0.9em; margin-bottom: 0.9em; }
-            .liveExample select[multiple] { width: 100%; height: 8em; }
-            .liveExample h2 { margin-top: 0.4em; font-weight: bold; font-size: 1.2em; }
+	<head>
+		<style type="text/css">
+			body { font-family: arial; font-size: 14px; }
+			.liveExample { padding: 1em; background-color: #EEEEDD; border: 1px solid #CCC; max-width: 655px; }
+			.liveExample input { font-family: Arial; }
+			.liveExample b { font-weight: bold; }
+			.liveExample p { margin-top: 0.9em; margin-bottom: 0.9em; }
+			.liveExample select[multiple] { width: 100%; height: 8em; }
+			.liveExample h2 { margin-top: 0.4em; font-weight: bold; font-size: 1.2em; }
 
-            .liveExample th { text-align: left; font-weight: bold; }
-            .liveExample .price { text-align: right; padding-right: 2em; }
-            .liveExample .grandTotal { border-top: 1px solid silver; padding-top: 0.5em; font-size: 1.2em; }
-            .liveExample .grandTotal SPAN { font-weight: bold; }
+			.liveExample th { text-align: left; font-weight: bold; }
+			.liveExample .price { text-align: right; padding-right: 2em; }
+			.liveExample .grandTotal { border-top: 1px solid silver; padding-top: 0.5em; font-size: 1.2em; }
+			.liveExample .grandTotal SPAN { font-weight: bold; }
 
-            .liveExample table, .liveExample td, .liveExample th { padding: 0.2em; border-width: 0; margin: 0; vertical-align: top; }
-            .liveExample td input, .liveExample td select { width: 8em; }
-            .liveExample td.quantity input { width: 4em; }
-            .liveExample td select { height: 1.8em; white-space: nowrap; }
-            li { list-style-type: disc; margin-left: 20px; }
-        </style>
-        <meta charset="utf-8">
-        <title>Shopping Cart Examples</title>
-    </head>
-    <body>
-    <div class='liveExample'>
-        <table width='100%'>
-            <thead>
-                <tr>
-                    <th width='25%'>Category</th>
-                    <th width='25%'>Product</th>
-                    <th class='price' width='15%'>Price</th>
-                    <th class='quantity' width='10%'>Quantity</th>
-                    <th class='price' width='15%'>Subtotal</th>
-                    <th width='10%'> </th>
-                </tr>
-            </thead>
-            <tbody data-sw-bind='foreach: lines'>
-                <tr>
-                    <td>
-                        <select data-sw-bind='foreach: categories, caption: select ...'>
-                            <option data-sw-bind="text: name, click: parent.setProducts"></option>
-                        </select>
-                    </td>
-                    <td>
-                        <select data-sw-bind='visible: category, foreach: products, caption: select ...'>
-                            <option data-sw-bind="text: name, click: parent.setProduct"></option>
-                        </select>
-                    </td>
-                    <td class='price' data-sw-bind='visible: product'>
-                        <span data-sw-bind='text: price'>$$$</span>
-                    </td>
-                    <td class='quantity'>
-                        <input data-sw-bind='visible: product, value: quantity, valueUpdate: keydown' />
-                    </td>
-                    <td class='price'>
-                        <span data-sw-bind='
-                            visible: product, 
-                            text: {{ formatCurrency(self.subtotal()) }}
-                        ' ></span>
+			.liveExample table, .liveExample td, .liveExample th { padding: 0.2em; border-width: 0; margin: 0; vertical-align: top; }
+			.liveExample td input, .liveExample td select { width: 8em; }
+			.liveExample td.quantity input { width: 4em; }
+			.liveExample td select { height: 1.8em; white-space: nowrap; }
+			li { list-style-type: disc; margin-left: 20px; }
+		</style>
+		<meta charset="utf-8">
+		<title>Shopping Cart Examples</title>
+	</head>
+	<body>
+	<div class='liveExample'>
+		<table width='100%'>
+			<thead>
+				<tr>
+					<th width='25%'>Category</th>
+					<th width='25%'>Product</th>
+					<th class='price' width='15%'>Price</th>
+					<th class='quantity' width='10%'>Quantity</th>
+					<th class='price' width='15%'>Subtotal</th>
+					<th width='10%'> </th>
+				</tr>
+			</thead>
+			<tbody data-sw-bind='foreach: lines'>
+				<tr>
+					<td>
+						<select data-sw-bind='foreach: categories, caption: select ...'>
+							<option data-sw-bind="text: name, click: parent.setProducts"></option>
+						</select>
+					</td>
+					<td>
+						<select data-sw-bind='visible: category, foreach: products, caption: select ...'>
+							<option data-sw-bind="text: name, click: parent.setProduct"></option>
+						</select>
+					</td>
+					<td class='price' data-sw-bind='visible: product'>
+						<span data-sw-bind='text: price'>$$$</span>
+					</td>
+					<td class='quantity'>
+						<input data-sw-bind='visible: product, value: quantity, valueUpdate: keydown' />
+					</td>
+					<td class='price'>
+						<span data-sw-bind='
+							visible: product,
+							text: {{ formatCurrency(self.subtotal()) }}
+						' ></span>
 
-                    </td>
-                    <td>
-                        <a href='#' data-sw-bind='click: root.removeLine'>Remove</a>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        <p class='grandTotal'>
-            Total value: <span data-sw-bind='text: grandTotal'> </span>
-        </p>
-        <button data-sw-bind='click: addLine'>Add product</button>
-        <button data-sw-bind='click: save'>Submit order</button>
-    </div>
+					</td>
+					<td>
+						<a href='#' data-sw-bind='click: root.removeLine'>Remove</a>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+		<p class='grandTotal'>
+			Total value: <span data-sw-bind='text: grandTotal'> </span>
+		</p>
+		<button data-sw-bind='click: addLine'>Add product</button>
+		<button data-sw-bind='click: save'>Submit order</button>
+	</div>
 
-        <script type="text/javascript" 
-                src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
-        </script>
-        
-        <script src="../../swift.js"></script>
-        <script type="text/javascript">
-            var sampleProductCategories = [
-                {
-                    "products": [{
-                        "name": "1948 Porsche 356-A Roadster",
-                        "price": 53.9
-                    },
-                    {
-                        "name": "XXXXX xXXXXX",
-                        "price": 13.9
-                    }],
-                    name : "CARS"
-                },
-                {
-                    "products": [{
-                        "name": "1948 Porsche 356-A Roadster",
-                        "price": 66.9
-                    }],
-                    name : "Buses"
-                },
-            ];
+		<script type="text/javascript"
+				src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
+		</script>
 
-            function formatCurrency(value) {
-                return "$" + value.toFixed(2);
-            }
+		<script src="../../swift.js"></script>
+		<script type="text/javascript">
+			var sampleProductCategories = [
+				{
+					"products": [{
+						"name": "1948 Porsche 356-A Roadster",
+						"price": 53.9
+					},
+					{
+						"name": "XXXXX xXXXXX",
+						"price": 13.9
+					}],
+					name : "CARS"
+				},
+				{
+					"products": [{
+						"name": "1948 Porsche 356-A Roadster",
+						"price": 66.9
+					}],
+					name : "Buses"
+				},
+			];
 
-            var grand = sw.observe(0);
-            var id = 0;
-            var CartLine = function() {
-                var self = this;
-                self.category = sw.observe();
-                self.id = id++;
-                //product options
-                self.product  = sw.observe();
-                self.price    = sw.observe(0);
-                self.quantity = sw.observe(1);
+			function formatCurrency(value) {
+				return "$" + value.toFixed(2);
+			}
 
-                self.subtotal = sw.compute(function subtotal () {
-                    self.quantity();
-                    var total = self.product() ? 
-                                 self.product().price * parseInt("0" + self.quantity(), 10) : 
-                                 0;
+			var grand = sw.observe(0);
+			var id = 0;
+			var CartLine = function() {
+				var self = this;
+				self.category = sw.observe();
+				self.id = id++;
+				//product options
+				self.product  = sw.observe();
+				self.price    = sw.observe(0);
+				self.quantity = sw.observe(1);
 
-                    return total;
-                });
-                
-                self.categories = sampleProductCategories;
-                self.products   = sw.observe([]);
+				self.subtotal = sw.compute(function subtotal () {
+					self.quantity();
+					var total = self.product() ?
+								 self.product().price * parseInt("0" + self.quantity(), 10) :
+								 0;
 
-                self.setProducts = function(item){
-                    //reset previous product
-                    self.product(false);
+					return total;
+				});
 
-                    //reset quantity
-                    self.quantity(1);
+				self.categories = sampleProductCategories;
+				self.products   = sw.observe([]);
 
-                    //show products list
-                    self.category(true);
-                    self.products.update(item.products);
-                };
+				self.setProducts = function(item){
+					//reset previous product
+					self.product(false);
 
-                self.setProduct = function(item){
-                    self.product(item);
-                    self.price(formatCurrency(item.price));
-                };
-            };
+					//reset quantity
+					self.quantity(1);
 
-            var Cart = function() {
-                // Stores an array of lines, and from these, can work out the grandTotal
-                var self = this;
-                self.lines = sw.observe([new CartLine(), new CartLine()]); // Put one line in by default
-                self.grandTotal = sw.compute(function grandTotal() {
-                    console.log(this);
-                    var obj = this;
-                    var total = 0;
-                    $.each(self.lines(), function() {
-                        this.subtotal.register(obj);
-                        total += this.subtotal();
-                    });
-                    return formatCurrency(total);
-                });
+					//show products list
+					self.category(true);
+					self.products.update(item.products);
+				};
 
-                // Operations
-                self.addLine = function() { self.lines.push(new CartLine()) };
-                self.removeLine = function(line) { self.lines.remove(line) };
-                self.save = function() {
-                    var dataToSave = $.map(self.lines(), function(line) {
-                        return line.product() ? {
-                            productName: line.product().name,
-                            quantity: line.quantity()
-                        } : undefined
-                    });
-                    alert("Could now send this to server: " + JSON.stringify(dataToSave));
-                };
-            };
-             
-            sw.render(new Cart());
-        </script>
-    </body>
+				self.setProduct = function(item){
+					self.product(item);
+					self.price(formatCurrency(item.price));
+				};
+			};
+
+			var Cart = function() {
+				// Stores an array of lines, and from these, can work out the grandTotal
+				var self = this;
+				self.lines = sw.observe([new CartLine(), new CartLine()]); // Put one line in by default
+				self.grandTotal = sw.compute(function grandTotal() {
+					var obj = this;
+					var total = 0;
+					$.each(self.lines(), function() {
+						this.subtotal.register(obj);
+						total += this.subtotal();
+					});
+					return formatCurrency(total);
+				});
+
+				// Operations
+				self.addLine = function() { self.lines.push(new CartLine()) };
+				self.removeLine = function(line) { self.lines.remove(line) };
+				self.save = function() {
+					var dataToSave = $.map(self.lines(), function(line) {
+						return line.product() ? {
+							productName: line.product().name,
+							quantity: line.quantity()
+						} : undefined
+					});
+					alert("Could now send this to server: " + JSON.stringify(dataToSave));
+				};
+			};
+
+			sw.render(new Cart());
+		</script>
+	</body>
 </html>

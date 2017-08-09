@@ -1,55 +1,54 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <style type="text/css">
-        
-        .hide {
-            display: none;
-        }
+	<head>
+		<style type="text/css">
 
-        .show {
-            display: none;
-        }
+		.hide {
+			display: none;
+		}
 
-        .hi {
-            background: red;
-        }
+		.show {
+			display: none;
+		}
 
-        </style>
-        <meta charset="utf-8">
-        <title>Form Text Input</title>
-    </head>
-    <body>
-        <div id="container">
-            <p>First name: <input data-sw-bind="value: firstName" /></p>
-            <p>Last name: <input data-sw-bind="value: lastName" /></p>
-            <h2>Hello, <span data-sw-bind="text: fullName, class: hi"> </span>!</h2>
-        </div>
+		.hi {
+			background: red;
+		}
 
-        <script type="text/javascript" 
-                src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
-        </script>
-        <script src="../../swift.js"></script>
-        <script type="text/javascript">
-            // Here's my data model
-            var ViewModel = function(first, last) {
-                var self = this;
-                this.firstName = sw.observe(first);
-                this.lastName  = sw.observe(last);
-                this.hi = sw.observe(true);
+		</style>
+		<meta charset="utf-8">
+		<title>Form Text Input</title>
+	</head>
+	<body>
+		<div id="container">
+			<p>First name: <input data-sw-bind="value: firstName, valueUpdate: keydown" /></p>
+			<p>Last name: <input data-sw-bind="value: lastName, valueUpdate: keydown" /></p>
+			<h2>Hello, <span data-sw-bind="text: fullName, class: hi"> </span>!</h2>
+		</div>
 
-                var i = 0;
-                var intr = setInterval(function(){
-                    if (i++ > 3){ clearInterval(intr) }
-                    self.hi(self.hi() ? false : true);
-                },1000);
-                
-                this.fullName = sw.compute(function() {
-                    return self.firstName() + " " + self.lastName();
-                }, [this.firstName, this.lastName]);
+		<script type="text/javascript"
+				src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
+		</script>
+		<script src="../../swift.js"></script>
+		<script type="text/javascript">
+			// Here's my data model
+			var ViewModel = function(first, last) {
+				var self = this;
+				this.firstName = sw.observe(first);
+				this.lastName  = sw.observe(last);
+				this.hi = sw.observe(true);
 
-            };
-            sw.render(new ViewModel("Planet", "Earth")); // rendering starts here
-        </script>
-    </body>
+				// setInterval(function(){
+				// 	self.hi(self.hi() ? false : true);
+				// },1000);
+
+				this.fullName = sw.compute(function() {
+					self.hi(self.hi() ? false : true);
+					return self.firstName() + " " + self.lastName();
+				}, [this.firstName, this.lastName]);
+
+			};
+			sw.render(new ViewModel("Planet", "Earth")); // rendering starts here
+		</script>
+	</body>
 </html>

@@ -9,7 +9,10 @@
 	};
 
 	function debug (){
-		console.log(arguments);
+		if (sw.debug) {
+			console.info('DEBUG');
+			console.info(arguments);
+		}
 	}
 
 	var cache = { data : {}, templates : {} };
@@ -141,6 +144,14 @@
 				return;
 			}
 
+			if (type === 'Object' && isDefined(key)) {
+				var old = JSON.stringify(_data);
+				if (old === JSON.stringify(key)) { return; }
+				_data = key;
+				updateObserved();
+				return;
+			}
+
 			if (isDefined(key)){
 				if (!isDefined(val)){
 					if (type === 'array' && typeof key !== 'number'){
@@ -178,7 +189,7 @@
 		observe.update = function(data){
 			if (data){
 				if (type === 'array'){
-					observe.removeAll();
+					observe.removeAll(true);
 					$(data).each(function(){
 						observe.push(this);
 					});
@@ -191,9 +202,9 @@
 			}
 		};
 
-		observe.removeAll = function(){
+		observe.removeAll = function(noupdate){
 			$(_data).each(function(){
-				observe.shift();
+				observe.shift(noupdate);
 			});
 		};
 
@@ -258,7 +269,7 @@
 			});
 		};
 
-		observe.splice = function(start, end){
+		observe.splice = function(start, end, noupdate){
 			_data.splice(start, end);
 			$(parentNode).each(function(){
 				var nodes = this.nodes;
@@ -270,11 +281,11 @@
 				}
 				nodes.splice(start, end);
 			});
-			updateObserved();
+			if (!noupdate) updateObserved();
 		};
 
-		observe.shift = function(){
-			observe.splice(0, 1);
+		observe.shift = function(noupdate){
+			observe.splice(0, 1, noupdate);
 		};
 
 		observe.pop = function(){
@@ -297,7 +308,8 @@
 			});
 
 			nodes = [];
-			parentNode.push(parent_object);
+			// parentNode.push(parent_object);
+			parentNode[0] = parent_object;
 			namespace = 'sw.' + ns;
 		};
 
@@ -401,6 +413,12 @@
 
 		'func' : {
 			init : function(){
+				this.valueAccess(this.data);
+			}
+		},
+
+		'compute' : {
+			update : function(){
 				this.valueAccess(this.data);
 			}
 		},
@@ -608,7 +626,7 @@
 		// we want to replace it later and tell swift that this string
 		// should be compiled.
 		var _toBeCompiled = str.match(/\{\{.*\}\}/g);
-		str = str.replace(/\{\{.*\}\}/, '[[00]]');
+		str = str.replace(/\{\{.*\}\}/g, '[[00]]');
 
 		// each model is seperated with a comma
 		// ex: data-sw-bind = 'text: name, func: functionname'
@@ -972,18 +990,56 @@
 		if (cache.templates[url]){
 			_fireAfterLoad(el);
 		} else {
-			$.ajax({
-				url: self.templatesPath + url,
-				success: function(data){
+			var iframe_fallback = function(){
+				self.useIfarme = true;
+				debug('using iframe');
+				var loaded = false;
+				var doc = window.document;
+				var node = doc.createElement('iframe');
+				var head = doc.getElementsByTagName('head')[0];
+
+				node.onload = node.onerror = node.onreadystatechange = function () {
+					if ((node.readyState && node.readyState !== "complete" &&
+					 node.readyState !== "loaded") || loaded ){
+						return false;
+					}
+
+					var data = $(node).contents().find('body').html();
 					cache.templates[url] = data;
 					_fireAfterLoad(el);
-				},
-				error : function(){
-					var error = arguments[2];
-					debug(error);
-				},
-				cache: false
-			});
+					node.onload = node.onreadystatechange = null;
+					$(node).remove();
+					loaded = true;
+					return true;
+				};
+
+				node.async = false;
+
+				node.src = self.templatesPath + url;
+				head.insertBefore(node, head.lastChild);
+			};
+
+			if (self.useIfarme){
+				iframe_fallback();
+			} else {
+				$.ajax({
+					url: self.templatesPath + url,
+					success: function(data){
+						if (typeof data !== 'string'){
+							iframe_fallback();
+							return;
+						}
+
+						cache.templates[url] = data;
+						_fireAfterLoad(el);
+					},
+
+					error : function(){
+						iframe_fallback();
+					},
+					cache: false
+				});
+			}
 		}
 	};
 
@@ -1034,9 +1090,13 @@
 
 
 	if (typeof require === 'function'){
-		define(['jQuery'], function(){
-			sw = this.exports = new Swift();
-		});
+		if (typeof define === 'function'){
+			define(['jQuery'], function(){
+				sw = this.exports = new Swift();
+			});
+		} else {
+			module.exports = new Swift();
+		}
 	} else {
 		sw = window.sw = window.Swift = new Swift();
 	}

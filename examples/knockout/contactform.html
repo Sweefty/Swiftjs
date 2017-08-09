@@ -1,164 +1,161 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <style type="text/css">
-            body { font-family: arial; font-size: 14px; }
-            .liveExample { padding: 1em; background-color: #EEEEDD; border: 1px solid #CCC; max-width: 655px; }
-            .liveExample input { font-family: Arial; }
-            .liveExample b { font-weight: bold; }
-            .liveExample p { margin-top: 0.9em; margin-bottom: 0.9em; }
-            .liveExample select[multiple] { width: 100%; height: 8em; }
-            .liveExample h2 { margin-top: 0.4em; font-weight: bold; font-size: 1.2em; }
+	<head>
+		<style type="text/css">
+			body { font-family: arial; font-size: 14px; }
+			.liveExample { padding: 1em; background-color: #EEEEDD; border: 1px solid #CCC; max-width: 655px; }
+			.liveExample input { font-family: Arial; }
+			.liveExample b { font-weight: bold; }
+			.liveExample p { margin-top: 0.9em; margin-bottom: 0.9em; }
+			.liveExample select[multiple] { width: 100%; height: 8em; }
+			.liveExample h2 { margin-top: 0.4em; font-weight: bold; font-size: 1.2em; }
 
-            .liveExample th { text-align: left; font-weight: bold; }
-            .liveExample .price { text-align: right; padding-right: 2em; }
-            .liveExample .grandTotal { border-top: 1px solid silver; padding-top: 0.5em; font-size: 1.2em; }
-            .liveExample .grandTotal SPAN { font-weight: bold; }
+			.liveExample th { text-align: left; font-weight: bold; }
+			.liveExample .price { text-align: right; padding-right: 2em; }
+			.liveExample .grandTotal { border-top: 1px solid silver; padding-top: 0.5em; font-size: 1.2em; }
+			.liveExample .grandTotal SPAN { font-weight: bold; }
 
-            .liveExample table, .liveExample td, .liveExample th { padding: 0.2em; border-width: 0; margin: 0; vertical-align: top; }
-            .liveExample td input, .liveExample td select { width: 8em; }
-            .liveExample td.quantity input { width: 4em; }
-            .liveExample td select { height: 1.8em; white-space: nowrap; }
-            li { list-style-type: disc; margin-left: 20px; }
-        </style>
-        <meta charset="utf-8">
-        <title>Shopping Cart Examples</title>
-    </head>
-    <body>
-        <div class='liveExample'> 
-            
-            <h2>Contacts</h2>
-            <div id='contactsList'>
-                <table class='contactsEditor'>
-                    <tr>
-                        <th>First name</th>
-                        <th>Last name</th>
-                        <th>Phone numbers</th>
-                    </tr>
-                    <tbody data-sw-bind="foreach: contacts">
-                        <tr>
-                            <td>
-                                <input data-sw-bind='value: firstName' />
-                                <div><a href='#' data-sw-bind='click: root.removeContact'>Delete</a></div>
-                            </td>
-                            <td><input data-sw-bind='value: lastName' /></td>
-                            <td>
-                                <table>
-                                    <tbody data-sw-bind="foreach: phones">
-                                        <tr>
-                                            <td><input data-sw-bind='value: type' /></td>
-                                            <td><input data-sw-bind='value: number' /></td>
-                                            <td><a href='#' data-sw-bind='click: root.removePhone'>Delete</a></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <a href='#' data-sw-bind='click: root.addPhone'>Add number</a>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-             
-            <p>
-                <button data-sw-bind='click: addContact'>Add a contact</button>
-                <button data-sw-bind='click: save, enable: {{ self.contacts().length > 0 }}'>Save to JSON</button>
-            </p>
-             
-            <textarea data-sw-bind='value: lastSavedJson' rows='5' cols='60' disabled='disabled'> </textarea>
-            
-        </div>
+			.liveExample table, .liveExample td, .liveExample th { padding: 0.2em; border-width: 0; margin: 0; vertical-align: top; }
+			.liveExample td input, .liveExample td select { width: 8em; }
+			.liveExample td.quantity input { width: 4em; }
+			.liveExample td select { height: 1.8em; white-space: nowrap; }
+			li { list-style-type: disc; margin-left: 20px; }
+		</style>
+		<meta charset="utf-8">
+		<title>Shopping Cart Examples</title>
+	</head>
+	<body>
+		<div class='liveExample'>
 
-        <script type="text/javascript" 
-                src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
-        </script>
-        
-        <script src="../../swift.js"></script>
-        <script type="text/javascript">
-            
-            var initialData = [
-                { firstName: "Danny", lastName: "LaRusso", phones: [
-                    { type: "Mobile", number: "(555) 121-2121" },
-                    { type: "Home", number: "(555) 123-4567"}]
-                },
-                { firstName: "Sensei", lastName: "Miyagi", phones: [
-                    { type: "Mobile", number: "(555) 444-2222" },
-                    { type: "Home", number: "(555) 999-1212"}]
-                }
-            ];
-             
-            var ContactsModel = function(contacts) {
-                var self = this;
-                // self.contacts = ko.observableArray(ko.utils.arrayMap(contacts, function(contact) {
-                //     return { firstName: contact.firstName, lastName: contact.lastName, phones: ko.observableArray(contact.phones) };
-                // }));
-                
-                self.contacts = sw.observe([]);
-                $(contacts).each(function(i, contact){
-                    self.contacts.push({
-                        firstName : sw.observe(contact.firstName),
-                        lastName  : sw.observe(contact.lastName),
-                        phones    : sw.observe((function(phones){
-                                        var p = [];
-                                        $(phones).each(function(i, ph){
-                                            p.push({
-                                                type : sw.observe(ph.type),
-                                                number : sw.observe(ph.number)
-                                            });
-                                        });
-                                        return p;
-                                    })(contact.phones))
-                    });
-                });
+			<h2>Contacts</h2>
+			<div id='contactsList'>
+				<table class='contactsEditor'>
+					<tr>
+						<th>First name</th>
+						<th>Last name</th>
+						<th>Phone numbers</th>
+					</tr>
+					<tbody data-sw-bind="foreach: contacts">
+						<tr>
+							<td>
+								<input data-sw-bind='value: firstName' />
+								<div><a href='#' data-sw-bind='click: root.removeContact'>Delete</a></div>
+							</td>
+							<td><input data-sw-bind='value: lastName' /></td>
+							<td>
+								<table>
+									<tbody data-sw-bind="foreach: phones">
+										<tr>
+											<td><input data-sw-bind='value: type' /></td>
+											<td><input data-sw-bind='value: number' /></td>
+											<td><a href='#' data-sw-bind='click: root.removePhone'>Delete</a></td>
+										</tr>
+									</tbody>
+								</table>
+								<a href='#' data-sw-bind='click: root.addPhone'>Add number</a>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 
-                self.addContact = function() {
-                    self.contacts.push({
-                        firstName: sw.observe(""),
-                        lastName: sw.observe(""),
-                        phones: sw.observe([])
-                    });
-                };
-             
-                self.removeContact = function(contact) {
-                    self.contacts.remove(contact);
-                };
-             
-                self.addPhone = function(contact) {
-                    contact.phones.push({
-                        type: sw.observe(""),
-                        number: sw.observe("")
-                    });
-                };
-             
-                self.removePhone = function(phone) {
-                    $.each(self.contacts(), function() { this.phones.remove(phone) })
-                };
-             
-                self.save = function() {
-                    var data = [];
-                    $(self.contacts()).each(function(i, contact){
-                        data.push({
-                            firstName : contact.firstName(),
-                            lastName : contact.lastName(),
-                            phones   : (function(phones){
-                                        var p = [];
-                                        $(phones).each(function(i, ph){
-                                            p.push({
-                                                type : ph.type(),
-                                                number : ph.number()
-                                            });
-                                        });
-                                        return p;
-                                    })(contact.phones())
-                        })
-                    });
+			<p>
+				<button data-sw-bind='click: addContact'>Add a contact</button>
+				<button data-sw-bind='click: save, enable: {{ self.contacts().length > 0 }}'>Save to JSON</button>
+			</p>
 
-                    self.lastSavedJson(JSON.stringify(data, null, 2));
-                };
-             
-                self.lastSavedJson = sw.observe("");
-            };
+			<textarea data-sw-bind='value: lastSavedJson' rows='5' cols='60' disabled='disabled'> </textarea>
 
-            sw.render(new ContactsModel(initialData));
-        </script>
-    </body>
+		</div>
+
+		<script type="text/javascript"
+				src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
+		</script>
+
+		<script src="../../swift.js"></script>
+		<script type="text/javascript">
+
+			var initialData = [
+				{ firstName: "Danny", lastName: "LaRusso", phones: [
+					{ type: "Mobile", number: "(555) 121-2121" },
+					{ type: "Home", number: "(555) 123-4567"}]
+				},
+				{ firstName: "Sensei", lastName: "Miyagi", phones: [
+					{ type: "Mobile", number: "(555) 444-2222" },
+					{ type: "Home", number: "(555) 999-1212"}]
+				}
+			];
+
+			var ContactsModel = function(contacts) {
+				var self = this;
+
+				self.contacts = sw.observe([]);
+				$(contacts).each(function(i, contact){
+					self.contacts.push({
+						firstName : sw.observe(contact.firstName),
+						lastName  : sw.observe(contact.lastName),
+						phones    : sw.observe((function(phones){
+										var p = [];
+										$(phones).each(function(i, ph){
+											p.push({
+												type : sw.observe(ph.type),
+												number : sw.observe(ph.number)
+											});
+										});
+										return p;
+									})(contact.phones))
+					});
+				});
+
+				self.addContact = function() {
+					self.contacts.push({
+						firstName: sw.observe(""),
+						lastName: sw.observe(""),
+						phones: sw.observe([])
+					});
+				};
+
+				self.removeContact = function(contact) {
+					self.contacts.remove(contact);
+				};
+
+				self.addPhone = function(contact) {
+					contact.phones.push({
+						type: sw.observe(""),
+						number: sw.observe("")
+					});
+				};
+
+				self.removePhone = function(phone) {
+					$.each(self.contacts(), function() { this.phones.remove(phone) })
+				};
+
+				self.save = function() {
+					var data = [];
+					$(self.contacts()).each(function(i, contact){
+						data.push({
+							firstName : contact.firstName(),
+							lastName : contact.lastName(),
+							phones   : (function(phones){
+										var p = [];
+										$(phones).each(function(i, ph){
+											p.push({
+												type : ph.type(),
+												number : ph.number()
+											});
+										});
+										return p;
+									})(contact.phones())
+						})
+					});
+
+					self.lastSavedJson(JSON.stringify(data, null, 2));
+				};
+
+				self.lastSavedJson = sw.observe("");
+			};
+
+			sw.render(new ContactsModel(initialData));
+		</script>
+	</body>
 </html>

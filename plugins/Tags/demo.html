@@ -1,76 +1,76 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <style type="text/css">
-            body { font-family: arial; font-size: 14px; }
-            .liveExample { padding: 1em; background-color: #EEEEDD; border: 1px solid #CCC; max-width: 655px; }
-            .liveExample input { font-family: Arial; }
-            .liveExample b { font-weight: bold; }
-            .liveExample p { margin-top: 0.9em; margin-bottom: 0.9em; }
-            .liveExample select[multiple] { width: 100%; height: 8em; }
-            .liveExample h2 { margin-top: 0.4em; }
-        </style>
-        <meta charset="utf-8">
-        <title>swiftjs - Tag Plugin</title>
-    </head>
-    <body>
-        <div class='liveExample'>
-            <h2>Tag It</h2>
-            <div>
-                <div data-sw-bind="tags: tags" style="padding:0;overflow:auto;border:1px solid #ccc; background:#fff;margin-bottom:20px;">
-                    
-                </div>
-            </div>
-            Number of Tags : <span data-sw-bind="text: numberofTags"></span>
-            <div style="height:30px;"></div>
-            <div>
-                <button data-sw-bind="click: getAllTags">Get All Tags</button>
-                <button data-sw-bind="click: removeLastTag">Remove Last Tag</button>
-            </div>
-        </div>
+	<head>
+		<style type="text/css">
+			body { font-family: arial; font-size: 14px; }
+			.liveExample { padding: 1em; background-color: #EEEEDD; border: 1px solid #CCC; max-width: 655px; }
+			.liveExample input { font-family: Arial; }
+			.liveExample b { font-weight: bold; }
+			.liveExample p { margin-top: 0.9em; margin-bottom: 0.9em; }
+			.liveExample select[multiple] { width: 100%; height: 8em; }
+			.liveExample h2 { margin-top: 0.4em; }
+		</style>
+		<meta charset="utf-8">
+		<title>swiftjs - Tag Plugin</title>
+	</head>
+	<body>
+		<div class='liveExample'>
+			<h2>Tag It</h2>
+			<div>
+				<div data-sw-bind="tags: tags" style="padding:0;overflow:auto;border:1px solid #ccc; background:#fff;margin-bottom:20px;">
 
-        <script type="text/javascript" 
-                src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
-        </script>
+				</div>
+			</div>
+			Number of Tags : <span data-sw-bind="text: numberofTags"></span>
+			<div style="height:30px;"></div>
+			<div>
+				<button data-sw-bind="click: getAllTags">Get All Tags</button>
+				<button data-sw-bind="click: removeLastTag">Remove Last Tag</button>
+			</div>
+		</div>
 
-        <!-- SWIFTJS -->
-        <script src="../../swift.js"></script>
+		<script type="text/javascript"
+				src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js">
+		</script>
 
-        <!-- TAGS PLUGIN -->
-        <script src="swTags.js"></script>
+		<!-- SWIFTJS -->
+		<script src="../../swift.js"></script>
 
-        <script type="text/javascript">
+		<!-- TAGS PLUGIN -->
+		<script src="swTags.js"></script>
 
-            var TaggingModel = function () {
-                var self = this;
-                this.tags = {
-                    items : sw.observe(["Hello"]),
-                    filter : function(tag){
-                        if (tag === 'a'){
-                            return false;
-                        }
-                        return true;
-                    },
-                    onTag : function(tag){
-                        console.log(tag);
-                    }
-                };
+		<script type="text/javascript">
 
-                this.numberofTags = sw.compute(function(){
-                    return self.tags.items().length;
-                });
+			var TaggingModel = function () {
+				var self = this;
+				this.tags = {
+					items : sw.observe(["Hello"]),
+					filter : function(tag){
+						if (tag === 'a'){
+							return false;
+						}
+						return true;
+					},
+					onTag : function(tag){
+						console.log(tag);
+					}
+				};
 
-                //use swift functions to interact with tags
-                this.getAllTags = function(){
-                    alert(self.tags.items());
-                }
+				this.numberofTags = sw.compute(function(){
+					return self.tags.items().length;
+				});
 
-                this.removeLastTag = function(){
-                    self.tags.items.pop();
-                };
-            };
-             
-            sw.render(new TaggingModel());
-        </script>
-    </body>
+				//use swift functions to interact with tags
+				this.getAllTags = function(){
+					alert(self.tags.items());
+				}
+
+				this.removeLastTag = function(){
+					self.tags.items.pop();
+				};
+			};
+
+			sw.render(new TaggingModel());
+		</script>
+	</body>
 </html>
